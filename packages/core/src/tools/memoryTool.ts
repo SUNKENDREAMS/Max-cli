@@ -45,36 +45,36 @@ Do NOT use this tool:
 - \`fact\` (string, required): The specific fact or piece of information to remember. This should be a clear, self-contained statement. For example, if the user says "My favorite color is blue", the fact would be "My favorite color is blue".
 `;
 
-export const GEMINI_CONFIG_DIR = '.gemini';
-export const DEFAULT_CONTEXT_FILENAME = 'GEMINI.md';
-export const MEMORY_SECTION_HEADER = '## Gemini Added Memories';
+export const MAX_HEADROOM_CONFIG_DIR = '.max_headroom';
+export const DEFAULT_CONTEXT_FILENAME = 'MAX_HEADROOM.md';
+export const MEMORY_SECTION_HEADER = '## Max Headroom Added Memories';
 
-// This variable will hold the currently configured filename for GEMINI.md context files.
-// It defaults to DEFAULT_CONTEXT_FILENAME but can be overridden by setGeminiMdFilename.
-let currentGeminiMdFilename: string | string[] = DEFAULT_CONTEXT_FILENAME;
+// This variable will hold the currently configured filename for MAX_HEADROOM.md context files.
+// It defaults to DEFAULT_CONTEXT_FILENAME but can be overridden by setMaxHeadroomMdFilename.
+let currentMaxHeadroomMdFilename: string | string[] = DEFAULT_CONTEXT_FILENAME;
 
-export function setGeminiMdFilename(newFilename: string | string[]): void {
+export function setMaxHeadroomMdFilename(newFilename: string | string[]): void {
   if (Array.isArray(newFilename)) {
     if (newFilename.length > 0) {
-      currentGeminiMdFilename = newFilename.map((name) => name.trim());
+      currentMaxHeadroomMdFilename = newFilename.map((name) => name.trim());
     }
   } else if (newFilename && newFilename.trim() !== '') {
-    currentGeminiMdFilename = newFilename.trim();
+    currentMaxHeadroomMdFilename = newFilename.trim();
   }
 }
 
-export function getCurrentGeminiMdFilename(): string {
-  if (Array.isArray(currentGeminiMdFilename)) {
-    return currentGeminiMdFilename[0];
+export function getCurrentMaxHeadroomMdFilename(): string {
+  if (Array.isArray(currentMaxHeadroomMdFilename)) {
+    return currentMaxHeadroomMdFilename[0];
   }
-  return currentGeminiMdFilename;
+  return currentMaxHeadroomMdFilename;
 }
 
-export function getAllGeminiMdFilenames(): string[] {
-  if (Array.isArray(currentGeminiMdFilename)) {
-    return currentGeminiMdFilename;
+export function getAllMaxHeadroomMdFilenames(): string[] {
+  if (Array.isArray(currentMaxHeadroomMdFilename)) {
+    return currentMaxHeadroomMdFilename;
   }
-  return [currentGeminiMdFilename];
+  return [currentMaxHeadroomMdFilename];
 }
 
 interface SaveMemoryParams {
@@ -82,7 +82,7 @@ interface SaveMemoryParams {
 }
 
 function getGlobalMemoryFilePath(): string {
-  return path.join(homedir(), GEMINI_CONFIG_DIR, getCurrentGeminiMdFilename());
+  return path.join(homedir(), MAX_HEADROOM_CONFIG_DIR, getCurrentMaxHeadroomMdFilename());
 }
 
 /**

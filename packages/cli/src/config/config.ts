@@ -10,15 +10,15 @@ import process from 'node:process';
 import {
   Config,
   loadServerHierarchicalMemory,
-  setGeminiMdFilename as setServerGeminiMdFilename,
-  getCurrentGeminiMdFilename,
+  setMaxHeadroomMdFilename as setServerMaxHeadroomMdFilename,
+  getCurrentMaxHeadroomMdFilename,
   ApprovalMode,
-  GEMINI_CONFIG_DIR as GEMINI_DIR,
-  DEFAULT_GEMINI_MODEL,
-  DEFAULT_GEMINI_EMBEDDING_MODEL,
+  MAX_HEADROOM_CONFIG_DIR as MAX_HEADROOM_DIR,
+  DEFAULT_LOCAL_MODEL,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
   FileDiscoveryService,
   TelemetryTarget,
-} from '@google/gemini-cli-core';
+} from 'max-headroom-cli-core';
 import { Settings } from './settings.js';
 
 import { Extension } from './extension.js';
@@ -60,8 +60,8 @@ async function parseArguments(): Promise<CliArgs> {
     .option('model', {
       alias: 'm',
       type: 'string',
-      description: `Model`,
-      default: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      description: `Model to use (e.g., ollama/mistral, gemini-1.5-pro-latest if configured)`,
+      default: process.env.MAX_HEADROOM_MODEL || DEFAULT_LOCAL_MODEL,
     })
     .option('prompt', {
       alias: 'p',
@@ -140,7 +140,7 @@ async function parseArguments(): Promise<CliArgs> {
 // This function is now a thin wrapper around the server's implementation.
 // It's kept in the CLI for now as App.tsx directly calls it for memory refresh.
 // TODO: Consider if App.tsx should get memory via a server call or if Config should refresh itself.
-export async function loadHierarchicalGeminiMemory(
+export async function loadHierarchicalMemory(
   currentWorkingDirectory: string,
   debugMode: boolean,
   fileService: FileDiscoveryService,
@@ -173,13 +173,13 @@ export async function loadCliConfig(
 
   // Set the context filename in the server's memoryTool module BEFORE loading memory
   // TODO(b/343434939): This is a bit of a hack. The contextFileName should ideally be passed
-  // directly to the Config constructor in core, and have core handle setGeminiMdFilename.
-  // However, loadHierarchicalGeminiMemory is called *before* createServerConfig.
+  // directly to the Config constructor in core, and have core handle setMaxHeadroomMdFilename.
+  // However, loadHierarchicalMemory is called *before* createServerConfig.
   if (settings.contextFileName) {
-    setServerGeminiMdFilename(settings.contextFileName);
+    setServerMaxHeadroomMdFilename(settings.contextFileName);
   } else {
     // Reset to default if not provided in settings.
-    setServerGeminiMdFilename(getCurrentGeminiMdFilename());
+    setServerMaxHeadroomMdFilename(getCurrentMaxHeadroomMdFilename());
   }
 
   const extensionContextFilePaths = extensions.flatMap((e) => e.contextFiles);
@@ -199,7 +199,7 @@ export async function loadCliConfig(
 
   return new Config({
     sessionId,
-    embeddingModel: DEFAULT_GEMINI_EMBEDDING_MODEL,
+    embeddingModel: DEFAULT_LOCAL_EMBEDDING_MODEL,
     sandbox: sandboxConfig,
     targetDir: process.cwd(),
     debugMode,
@@ -212,7 +212,7 @@ export async function loadCliConfig(
     mcpServerCommand: settings.mcpServerCommand,
     mcpServers,
     userMemory: memoryContent,
-    geminiMdFileCount: fileCount,
+    contextFileCount: fileCount, // Renamed from geminiMdFileCount
     approvalMode: argv.yolo || false ? ApprovalMode.YOLO : ApprovalMode.DEFAULT,
     showMemoryUsage:
       argv.show_memory_usage || settings.showMemoryUsage || false,
@@ -268,10 +268,10 @@ function mergeMcpServers(settings: Settings, extensions: Extension[]) {
 function findEnvFile(startDir: string): string | null {
   let currentDir = path.resolve(startDir);
   while (true) {
-    // prefer gemini-specific .env under GEMINI_DIR
-    const geminiEnvPath = path.join(currentDir, GEMINI_DIR, '.env');
-    if (fs.existsSync(geminiEnvPath)) {
-      return geminiEnvPath;
+    // prefer max-headroom-specific .env under MAX_HEADROOM_DIR
+    const maxHeadroomEnvPath = path.join(currentDir, MAX_HEADROOM_DIR, '.env');
+    if (fs.existsSync(maxHeadroomEnvPath)) {
+      return maxHeadroomEnvPath;
     }
     const envPath = path.join(currentDir, '.env');
     if (fs.existsSync(envPath)) {
@@ -279,10 +279,10 @@ function findEnvFile(startDir: string): string | null {
     }
     const parentDir = path.dirname(currentDir);
     if (parentDir === currentDir || !parentDir) {
-      // check .env under home as fallback, again preferring gemini-specific .env
-      const homeGeminiEnvPath = path.join(os.homedir(), GEMINI_DIR, '.env');
-      if (fs.existsSync(homeGeminiEnvPath)) {
-        return homeGeminiEnvPath;
+      // check .env under home as fallback, again preferring max-headroom-specific .env
+      const homeMaxHeadroomEnvPath = path.join(os.homedir(), MAX_HEADROOM_DIR, '.env');
+      if (fs.existsSync(homeMaxHeadroomEnvPath)) {
+        return homeMaxHeadroomEnvPath;
       }
       const homeEnvPath = path.join(os.homedir(), '.env');
       if (fs.existsSync(homeEnvPath)) {

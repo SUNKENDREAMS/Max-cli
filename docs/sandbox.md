@@ -1,17 +1,18 @@
-# Sandboxing in the Gemini CLI
+# Sandboxing in Max Headroom
 
-This document provides a guide to sandboxing in the Gemini CLI, including prerequisites, quickstart, and configuration.
+This document provides a guide to sandboxing in Max Headroom, including prerequisites, quickstart, and configuration, with considerations for offline environments.
 
 ## Prerequisites
 
-Before using sandboxing, you need to install and set up the Gemini CLI:
+Before using sandboxing, you need to install and set up Max Headroom:
 
 ```bash
-# install gemini-cli with npm
-npm install -g @google/gemini-cli
+# install max-headroom-cli (example from local tarball or internal registry)
+npm install -g ./max-headroom-cli-vX.Y.Z.tgz
+# or from internal registry: npm install -g max-headroom-cli
 
 # Verify installation
-gemini --version
+max-headroom --version
 ```
 
 ## Overview of sandboxing
@@ -45,15 +46,15 @@ Cross-platform sandboxing with complete process isolation.
 
 ```bash
 # Enable sandboxing with command flag
-gemini -s -p "analyze the code structure"
+max-headroom -s -p "analyze the code structure"
 
 # Use environment variable
-export GEMINI_SANDBOX=true
-gemini -p "run the test suite"
+export MAX_HEADROOM_SANDBOX=true
+max-headroom -p "run the test suite"
 
 # Configure in settings.json
 {
-  "sandbox": "docker"
+  "sandbox": "docker" # Assumes docker and the image are available in the environment
 }
 ```
 
@@ -62,7 +63,7 @@ gemini -p "run the test suite"
 ### Enable sandboxing (in order of precedence)
 
 1. **Command flag**: `-s` or `--sandbox`
-2. **Environment variable**: `GEMINI_SANDBOX=true|docker|podman|sandbox-exec`
+2. **Environment variable**: `MAX_HEADROOM_SANDBOX=true|docker|podman|sandbox-exec`
 3. **Settings file**: `"sandbox": true` in `settings.json`
 
 ### macOS Seatbelt profiles
@@ -106,17 +107,17 @@ export SANDBOX_SET_UID_GID=false  # Disable UID/GID mapping
 ### Debug mode
 
 ```bash
-DEBUG=1 gemini -s -p "debug command"
+DEBUG=1 max-headroom -s -p "debug command"
 ```
 
 ### Inspect sandbox
 
 ```bash
 # Check environment
-gemini -s -p "run shell command: env | grep SANDBOX"
+max-headroom -s -p "run shell command: env | grep SANDBOX"
 
 # List mounts
-gemini -s -p "run shell command: mount | grep workspace"
+max-headroom -s -p "run shell command: mount | grep workspace"
 ```
 
 ## Security notes

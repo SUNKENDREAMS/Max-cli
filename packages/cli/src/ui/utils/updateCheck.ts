@@ -25,7 +25,10 @@ export async function checkForUpdates(): Promise<string | null> {
     });
 
     if (notifier.update) {
-      return `Gemini CLI update available! ${notifier.update.current} → ${notifier.update.latest}\nRun npm install -g ${packageJson.name} to update`;
+      // For offline APEN environment, update check against public npm might not be desired or possible.
+      // This logic should ideally be disabled or configured to check an internal registry if one exists.
+      console.warn("Update check is configured to check public npm registry. This may not work or be desired in the APEN environment.");
+      return `Max Headroom CLI update available! ${notifier.update.current} → ${notifier.update.latest}\nRun npm install -g ${packageJson.name} to update (from your configured registry).`;
     }
 
     return null;

@@ -1,116 +1,117 @@
-# Gemini CLI Execution and Deployment
+# Max Headroom Execution and Deployment
 
-This document describes how to run Gemini CLI and explains the deployment architecture that Gemini CLI uses.
+This document describes how to run Max Headroom and explains its deployment architecture, focusing on its use in a closed, restricted environment.
 
-## Running Gemini CLI
+## Running Max Headroom
 
-There are several ways to run Gemini CLI. The option you choose depends on how you intend to use Gemini CLI.
+There are several ways to run Max Headroom. The option you choose depends on how you intend to use it.
 
 ---
 
-### 1. Standard installation (Recommended for typical users)
+### 1. Standard installation (Recommended for typical users in the closed environment)
 
-This is the recommended way for end-users to install Gemini CLI. It involves downloading the Gemini CLI package from the NPM registry.
+This is the recommended way for end-users to install Max Headroom within the restricted environment. It involves obtaining the Max Headroom package from your internal artifact repository or a shared location.
 
-- **Global install:**
+- **Global install (from local/internal registry/tarball):**
 
   ```bash
-  # Install the CLI globally
-  npm install -g @google/gemini-cli
+  # Example: Install the CLI globally from a tarball
+  npm install -g ./max-headroom-cli-vX.Y.Z.tgz
 
   # Now you can run the CLI from anywhere
-  gemini
+  max-headroom
+  ```
+  Or, if using a private npm registry:
+  ```bash
+  # Configure npm to use your private registry
+  npm config set registry http://your-internal-npm-registry.local
+  npm install -g max-headroom-cli
+
+  # Now you can run the CLI from anywhere
+  max-headroom
   ```
 
-- **NPX execution:**
+- **NPX execution (if applicable in your environment):**
+  If your environment supports `npx` with a local or internal package source:
   ```bash
-  # Execute the latest version from NPM without a global install
-  npx @google/gemini-cli
+  # Execute from a local path or internal registry
+  npx /path/to/max-headroom-cli # or npx max-headroom-cli if private registry is configured
   ```
 
 ---
 
-### 2. Running in a sandbox (Docker/Podman)
+### 2. Running in a sandbox (Docker/Podman - if available in the closed environment)
 
-For security and isolation, Gemini CLI can be run inside a container. This is the default way that the CLI executes tools that might have side effects.
+For security and isolation, Max Headroom can be run inside a container if your environment supports Docker or Podman. This is the default way that the CLI executes tools that might have side effects.
 
-- **Directly from the Registry:**
-  You can run the published sandbox image directly. This is useful for environments where you only have Docker and want to run the CLI.
+- **Directly from a local/internal Registry:**
+  You can run a pre-built sandbox image from your internal container registry.
   ```bash
-  # Run the published sandbox image
-  docker run --rm -it us-docker.pkg.dev/gemini-code-dev/gemini-cli/sandbox:0.1.1
+  # Run the sandbox image from your internal registry
+  docker run --rm -it your-internal-registry.local/max-headroom-sandbox:X.Y.Z
   ```
 - **Using the `--sandbox` flag:**
-  If you have Gemini CLI installed locally (using the standard installation described above), you can instruct it to run inside the sandbox container.
+  If you have Max Headroom installed locally, you can instruct it to run inside the sandbox container (assuming the image is accessible).
   ```bash
-  gemini --sandbox "your prompt here"
+  max-headroom --sandbox "your prompt here"
   ```
 
 ---
 
-### 3. Running from source (Recommended for Gemini CLI contributors)
+### 3. Running from source (Recommended for Max Headroom contributors/developers)
 
 Contributors to the project will want to run the CLI directly from the source code.
 
 - **Development Mode:**
-  This method provides hot-reloading and is useful for active development.
+  This method is useful for active development.
   ```bash
   # From the root of the repository
   npm run start
   ```
 - **Production-like mode (Linked package):**
-  This method simulates a global installation by linking your local package. It's useful for testing a local build in a production workflow.
+  This method simulates a global installation by linking your local package.
 
   ```bash
   # Link the local cli package to your global node_modules
   npm link packages/cli
 
-  # Now you can run your local version using the `gemini` command
-  gemini
+  # Now you can run your local version using the `max-headroom` command
+  max-headroom
   ```
 
 ---
 
-### 4. Running the latest Gemini CLI commit from GitHub
-
-You can run the most recently committed version of Gemini CLI directly from the GitHub repository. This is useful for testing features still in development.
-
-```bash
-# Execute the CLI directly from the main branch on GitHub
-npx https://github.com/google-gemini/gemini-cli
-```
-
-## Deployment architecture
+## Deployment architecture (for closed environment)
 
 The execution methods described above are made possible by the following architectural components and processes:
 
 **NPM packages**
 
-Gemini CLI project is a monorepo that publishes two core packages to the NPM registry:
+The Max Headroom project is a monorepo that produces packages:
 
-- `@google/gemini-cli-core`: The backend, handling logic and tool execution.
-- `@google/gemini-cli`: The user-facing frontend.
+- `max-headroom-core` (or similar, if packaged separately): The backend, handling logic and tool execution.
+- `max-headroom-cli`: The user-facing frontend.
 
-These packages are used when performing the standard installation and when running Gemini CLI from the source.
+These packages are intended for distribution within your closed environment, e.g., via an internal npm registry or as tarballs.
 
 **Build and packaging processes**
 
-There are two distinct build processes used, depending on the distribution channel:
+- **Local/Internal Publication:** The TypeScript source code is transpiled into standard JavaScript. The `npm run bundle` script uses `esbuild` to bundle the entire application into a single, self-contained JavaScript file (`bundle/max-headroom.js`). This bundled version is what you would distribute.
 
-- **NPM publication:** For publishing to the NPM registry, the TypeScript source code in `@google/gemini-cli-core` and `@google/gemini-cli` is transpiled into standard JavaScript using the TypeScript Compiler (`tsc`). The resulting `dist/` directory is what gets published in the NPM package. This is a standard approach for TypeScript libraries.
+**Docker sandbox image (if used)**
 
-- **GitHub `npx` execution:** When running the latest version of Gemini CLI directly from GitHub, a different process is triggered by the `prepare` script in `package.json`. This script uses `esbuild` to bundle the entire application and its dependencies into a single, self-contained JavaScript file. This bundle is created on-the-fly on the user's machine and is not checked into the repository.
+If using containerized sandboxing:
+- The `max-headroom-sandbox` container image is built from a Dockerfile.
+- This image should be pushed to and pulled from your internal container registry.
+- The `scripts/prepare-cli-packagejson.js` script might need adjustment to refer to your internal sandbox image URI if this was previously dynamic.
 
-**Docker sandbox image**
+## Release process (for closed environment)
 
-The Docker-based execution method is supported by the `gemini-cli-sandbox` container image. This image is published to a container registry and contains a pre-installed, global version of Gemini CLI. The `scripts/prepare-cli-packagejson.js` script dynamically injects the URI of this image into the CLI's `package.json` before publishing, so the CLI knows which image to pull when the `--sandbox` flag is used.
+A script, potentially based on `npm run publish:release`, can orchestrate the release process for your internal environment. This would typically involve:
 
-## Release process
+1.  Build the NPM packages.
+2.  (If using sandbox) Build and tag the `max-headroom-sandbox` Docker image.
+3.  (If using sandbox) Push the Docker image to your internal container registry.
+4.  Publish/distribute the `max-headroom-cli` npm package to your internal npm registry or package it as a tarball for manual distribution.
 
-A unified script, `npm run publish:release`, orchestrates the release process. The script performs the following actions:
-
-1.  Build the NPM packages using `tsc`.
-2.  Update the CLI's `package.json` with the Docker image URI.
-3.  Build and tag the `gemini-cli-sandbox` Docker image.
-4.  Push the Docker image to the container registry.
-5.  Publish the NPM packages to the artifact registry.
+This deployment strategy ensures that Max Headroom is installable and runnable within your restricted environment, with its dependencies bundled.

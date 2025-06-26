@@ -72,11 +72,11 @@ enum StreamProcessingStatus {
 }
 
 /**
- * Manages the Gemini stream, including user input, command processing,
+ * Manages the AI model stream, including user input, command processing,
  * API interaction, and tool call lifecycle.
  */
-export const useGeminiStream = (
-  geminiClient: GeminiClient,
+export const useAIStream = (
+  aiClient: GeminiClient, // Will be AIClient once core is updated
   history: HistoryItem[],
   addItem: UseHistoryManagerReturn['addItem'],
   setShowHelp: React.Dispatch<React.SetStateAction<boolean>>,
@@ -146,7 +146,7 @@ export const useGeminiStream = (
     onExec,
     onDebugMessage,
     config,
-    geminiClient,
+    aiClient,
   );
 
   const streamingState = useMemo(() => {
@@ -309,13 +309,13 @@ export const useGeminiStream = (
       }
       let newGeminiMessageBuffer = currentGeminiMessageBuffer + eventValue;
       if (
-        pendingHistoryItemRef.current?.type !== 'gemini' &&
-        pendingHistoryItemRef.current?.type !== 'gemini_content'
+        pendingHistoryItemRef.current?.type !== 'ai' && // Renamed
+        pendingHistoryItemRef.current?.type !== 'ai_content' // Renamed
       ) {
         if (pendingHistoryItemRef.current) {
           addItem(pendingHistoryItemRef.current, userMessageTimestamp);
         }
-        setPendingHistoryItem({ type: 'gemini', text: '' });
+        setPendingHistoryItem({ type: 'ai', text: '' }); // Renamed
         newGeminiMessageBuffer = eventValue;
       }
       // Split large messages for better rendering performance. Ideally,
@@ -324,11 +324,11 @@ export const useGeminiStream = (
       if (splitPoint === newGeminiMessageBuffer.length) {
         // Update the existing message with accumulated content
         setPendingHistoryItem((item) => ({
-          type: item?.type as 'gemini' | 'gemini_content',
+          type: item?.type as 'ai' | 'ai_content', // Renamed
           text: newGeminiMessageBuffer,
         }));
       } else {
-        // This indicates that we need to split up this Gemini Message.
+        // This indicates that we need to split up this AI Message.
         // Splitting a message is primarily a performance consideration. There is a
         // <Static> component at the root of App.tsx which takes care of rendering
         // content statically or dynamically. Everything but the last message is
@@ -340,14 +340,14 @@ export const useGeminiStream = (
         const afterText = newGeminiMessageBuffer.substring(splitPoint);
         addItem(
           {
-            type: pendingHistoryItemRef.current?.type as
-              | 'gemini'
-              | 'gemini_content',
+            type: pendingHistoryItemRef.current?.type as // Renamed
+              | 'ai'
+              | 'ai_content',
             text: beforeText,
           },
           userMessageTimestamp,
         );
-        setPendingHistoryItem({ type: 'gemini_content', text: afterText });
+        setPendingHistoryItem({ type: 'ai_content', text: afterText }); // Renamed
         newGeminiMessageBuffer = afterText;
       }
       return newGeminiMessageBuffer;
@@ -520,8 +520,8 @@ export const useGeminiStream = (
       setInitError(null);
 
       try {
-        const stream = geminiClient.sendMessageStream(queryToSend, abortSignal);
-        const processingStatus = await processGeminiStreamEvents(
+        const stream = aiClient.sendMessageStream(queryToSend, abortSignal); // Renamed geminiClient
+        const processingStatus = await processGeminiStreamEvents( // processGeminiStreamEvents might need rename if events are different
           stream,
           userMessageTimestamp,
           abortSignal,
@@ -542,7 +542,7 @@ export const useGeminiStream = (
           addItem(
             {
               type: MessageType.ERROR,
-              text: parseAndFormatApiError(
+              text: parseAndFormatApiError( // This parsing might need to be more generic
                 getErrorMessage(error) || 'Unknown error',
                 config.getContentGeneratorConfig().authType,
               ),
@@ -558,12 +558,12 @@ export const useGeminiStream = (
       streamingState,
       setShowHelp,
       prepareQueryForGemini,
-      processGeminiStreamEvents,
+      processGeminiStreamEvents, // This might need rename
       pendingHistoryItemRef,
       addItem,
       setPendingHistoryItem,
       setInitError,
-      geminiClient,
+      aiClient, // Renamed geminiClient
       startNewTurn,
       onAuthError,
       config,
@@ -597,7 +597,7 @@ export const useGeminiStream = (
               | TrackedCompletedToolCall
               | TrackedCancelledToolCall;
             return (
-              !completedOrCancelledCall.responseSubmittedToGemini &&
+              !completedOrCancelledCall.responseSubmittedToModel && // Renamed
               completedOrCancelledCall.response?.responseParts !== undefined
             );
           }
@@ -630,7 +630,7 @@ export const useGeminiStream = (
         );
       }
 
-      // Only proceed with submitting to Gemini if ALL tools are complete.
+      // Only proceed with submitting to the AI model if ALL tools are complete.
       const allToolsAreComplete =
         toolCalls.length > 0 &&
         toolCalls.length === completedAndReadyToSubmitTools.length;
@@ -639,24 +639,24 @@ export const useGeminiStream = (
         return;
       }
 
-      const geminiTools = completedAndReadyToSubmitTools.filter(
+      const modelTools = completedAndReadyToSubmitTools.filter( // Renamed geminiTools
         (t) => !t.request.isClientInitiated,
       );
 
-      if (geminiTools.length === 0) {
+      if (modelTools.length === 0) { // Renamed geminiTools
         return;
       }
 
-      // If all the tools were cancelled, don't submit a response to Gemini.
-      const allToolsCancelled = geminiTools.every(
+      // If all the tools were cancelled, don't submit a response to the AI model.
+      const allToolsCancelled = modelTools.every( // Renamed geminiTools
         (tc) => tc.status === 'cancelled',
       );
 
       if (allToolsCancelled) {
-        if (geminiClient) {
+        if (aiClient) { // Renamed geminiClient
           // We need to manually add the function responses to the history
           // so the model knows the tools were cancelled.
-          const responsesToAdd = geminiTools.flatMap(
+          const responsesToAdd = modelTools.flatMap( // Renamed geminiTools
             (toolCall) => toolCall.response.responseParts,
           );
           for (const response of responsesToAdd) {
@@ -668,24 +668,24 @@ export const useGeminiStream = (
             } else {
               parts = [response];
             }
-            geminiClient.addHistory({
+            aiClient.addHistory({ // Renamed geminiClient
               role: 'user',
               parts,
             });
           }
         }
 
-        const callIdsToMarkAsSubmitted = geminiTools.map(
+        const callIdsToMarkAsSubmitted = modelTools.map( // Renamed geminiTools
           (toolCall) => toolCall.request.callId,
         );
         markToolsAsSubmitted(callIdsToMarkAsSubmitted);
         return;
       }
 
-      const responsesToSend: PartListUnion[] = geminiTools.map(
+      const responsesToSend: PartListUnion[] = modelTools.map( // Renamed geminiTools
         (toolCall) => toolCall.response.responseParts,
       );
-      const callIdsToMarkAsSubmitted = geminiTools.map(
+      const callIdsToMarkAsSubmitted = modelTools.map( // Renamed geminiTools
         (toolCall) => toolCall.request.callId,
       );
 
@@ -701,7 +701,7 @@ export const useGeminiStream = (
     submitQuery,
     markToolsAsSubmitted,
     addItem,
-    geminiClient,
+    aiClient, // Renamed geminiClient
     performMemoryRefresh,
   ]);
 
@@ -774,7 +774,7 @@ export const useGeminiStream = (
             const toolName = toolCall.request.name;
             const fileName = path.basename(filePath);
             const toolCallWithSnapshotFileName = `${timestamp}-${fileName}-${toolName}.json`;
-            const clientHistory = await geminiClient?.getHistory();
+            const clientHistory = await aiClient?.getHistory(); // Renamed geminiClient
             const toolCallWithSnapshotFilePath = path.join(
               checkpointDir,
               toolCallWithSnapshotFileName,
@@ -808,7 +808,7 @@ export const useGeminiStream = (
       }
     };
     saveRestorableToolCalls();
-  }, [toolCalls, config, onDebugMessage, gitService, history, geminiClient]);
+  }, [toolCalls, config, onDebugMessage, gitService, history, aiClient]); // Renamed geminiClient
 
   return {
     streamingState,

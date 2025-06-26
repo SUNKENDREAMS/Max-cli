@@ -5,306 +5,192 @@
  */
 
 import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
+import * as os from 'os';
 import * as path from 'path';
-import { homedir } from 'os';
-import { bfsFileSearch } from './bfsFileSearch.js';
+import { getErrorMessage, isNodeError } from './errors.js';
 import {
-  GEMINI_CONFIG_DIR,
-  getAllGeminiMdFilenames,
+  getCurrentMaxHeadroomMdFilename, // Renamed
+  getAllMaxHeadroomMdFilenames, // Renamed
+  MAX_HEADROOM_CONFIG_DIR, // Renamed
 } from '../tools/memoryTool.js';
 import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
+import { Config } from '../config/config.js';
 
-// Simple console logger, similar to the one previously in CLI's config.ts
-// TODO: Integrate with a more robust server-side logger if available/appropriate.
-const logger = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  debug: (...args: any[]) =>
-    console.debug('[DEBUG] [MemoryDiscovery]', ...args),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  warn: (...args: any[]) => console.warn('[WARN] [MemoryDiscovery]', ...args),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error: (...args: any[]) =>
-    console.error('[ERROR] [MemoryDiscovery]', ...args),
-};
-
-const MAX_DIRECTORIES_TO_SCAN_FOR_MEMORY = 200;
-
-interface GeminiFileContent {
+interface ContextFileContent { // Renamed
   filePath: string;
-  content: string | null;
+  content: string;
 }
 
-async function findProjectRoot(startDir: string): Promise<string | null> {
-  let currentDir = path.resolve(startDir);
-  while (true) {
-    const gitPath = path.join(currentDir, '.git');
-    try {
-      const stats = await fs.stat(gitPath);
-      if (stats.isDirectory()) {
-        return currentDir;
-      }
-    } catch (error: unknown) {
-      // Don't log ENOENT errors as they're expected when .git doesn't exist
-      // Also don't log errors in test environments, which often have mocked fs
-      const isENOENT =
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code: string }).code === 'ENOENT';
-
-      // Only log unexpected errors in non-test environments
-      // process.env.NODE_ENV === 'test' or VITEST are common test indicators
-      const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
-
-      if (!isENOENT && !isTestEnv) {
-        if (typeof error === 'object' && error !== null && 'code' in error) {
-          const fsError = error as { code: string; message: string };
-          logger.warn(
-            `Error checking for .git directory at ${gitPath}: ${fsError.message}`,
-          );
-        } else {
-          logger.warn(
-            `Non-standard error checking for .git directory at ${gitPath}: ${String(error)}`,
-          );
-        }
-      }
-    }
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) {
-      return null;
-    }
-    currentDir = parentDir;
-  }
+// Helper function to get the directory name for settings based on the config.
+function getSettingsDirName(_config?: Config): string {
+  return MAX_HEADROOM_CONFIG_DIR; // Use renamed const
 }
 
-async function getGeminiMdFilePathsInternal(
-  currentWorkingDirectory: string,
-  userHomePath: string,
-  debugMode: boolean,
-  fileService: FileDiscoveryService,
-  extensionContextFilePaths: string[] = [],
+/**
+ * Searches for context files (e.g., MAX_HEADROOM.md) in a hierarchical manner:
+ * 1. Global: `~/.max_headroom/<filename>`
+ * 2. Project Root and Ancestors: Traverses up from `currentDir` to `rootDir`, looking in `.max_headroom/<filename>`.
+ * 3. Subdirectories: Scans subdirectories under `currentDir` (respecting ignores).
+ *
+ * @param rootDir The absolute path to the project's root directory.
+ * @param currentDir The absolute path to the current working directory.
+ * @param debugMode Optional flag to enable debug logging.
+ * @param fileService Optional FileDiscoveryService for testing or custom file operations.
+ * @param config Optional Config object.
+ * @returns An array of absolute paths to found context files, ordered by precedence (more specific last).
+ */
+async function getContextMdFilePathsInternal( // Renamed
+  rootDir: string,
+  currentDir: string,
+  debugMode: boolean = false,
+  fileService?: FileDiscoveryService,
+  config?: Config,
 ): Promise<string[]> {
-  const allPaths = new Set<string>();
-  const geminiMdFilenames = getAllGeminiMdFilenames();
+  const effectiveFileService = fileService || new FileDiscoveryService(rootDir);
+  const paths: string[] = [];
+  const foundPaths = new Set<string>();
 
-  for (const geminiMdFilename of geminiMdFilenames) {
-    const resolvedCwd = path.resolve(currentWorkingDirectory);
-    const resolvedHome = path.resolve(userHomePath);
-    const globalMemoryPath = path.join(
-      resolvedHome,
-      GEMINI_CONFIG_DIR,
-      geminiMdFilename,
-    );
+  const settingsDirName = getSettingsDirName(config);
+  const contextMdFilenames = getAllMaxHeadroomMdFilenames(); // Renamed function call
 
-    if (debugMode)
-      logger.debug(
-        `Searching for ${geminiMdFilename} starting from CWD: ${resolvedCwd}`,
-      );
-    if (debugMode) logger.debug(`User home directory: ${resolvedHome}`);
+  const addPathIfFound = async (filePath: string) => {
+    if (!foundPaths.has(filePath) && (await effectiveFileService.exists(filePath))) {
+      paths.push(filePath);
+      foundPaths.add(filePath);
+      if (debugMode) console.log(`[MemoryDiscovery] Found context file: ${filePath}`);
+    }
+  };
 
+  // 1. Global context file(s)
+  for (const filename of contextMdFilenames) {
+    const globalPath = path.join(os.homedir(), settingsDirName, filename);
+    await addPathIfFound(globalPath);
+  }
+
+  // 2. Project Root and Ancestors (from currentDir up to rootDir)
+  const searchUpTo = path.resolve(rootDir);
+  let dir = path.resolve(currentDir);
+  while (dir.startsWith(searchUpTo) || dir === searchUpTo) {
+    for (const filename of contextMdFilenames) {
+      const projectPath = path.join(dir, settingsDirName, filename);
+      await addPathIfFound(projectPath);
+    }
+    if (dir === searchUpTo) break;
+    const parentDir = path.dirname(dir);
+    if (parentDir === dir) break;
+    dir = parentDir;
+  }
+
+  // 3. Subdirectories under currentDir (if currentDir is within rootDir)
+  if (currentDir.startsWith(searchUpTo)) {
+    const subDirPatterns = contextMdFilenames.map(filename => `**/${settingsDirName}/${filename}`);
     try {
-      await fs.access(globalMemoryPath, fsSync.constants.R_OK);
-      allPaths.add(globalMemoryPath);
-      if (debugMode)
-        logger.debug(
-          `Found readable global ${geminiMdFilename}: ${globalMemoryPath}`,
-        );
-    } catch {
-      if (debugMode)
-        logger.debug(
-          `Global ${geminiMdFilename} not found or not readable: ${globalMemoryPath}`,
-        );
-    }
+      const subDirFiles = await effectiveFileService.findFiles({
+        patterns: subDirPatterns,
+        baseDir: currentDir,
+        respectGitIgnore: config?.getFileFilteringRespectGitIgnore() ?? true,
+      });
 
-    const projectRoot = await findProjectRoot(resolvedCwd);
-    if (debugMode)
-      logger.debug(`Determined project root: ${projectRoot ?? 'None'}`);
-
-    const upwardPaths: string[] = [];
-    let currentDir = resolvedCwd;
-    // Determine the directory that signifies the top of the project or user-specific space.
-    const ultimateStopDir = projectRoot
-      ? path.dirname(projectRoot)
-      : path.dirname(resolvedHome);
-
-    while (currentDir && currentDir !== path.dirname(currentDir)) {
-      // Loop until filesystem root or currentDir is empty
-      if (debugMode) {
-        logger.debug(
-          `Checking for ${geminiMdFilename} in (upward scan): ${currentDir}`,
-        );
-      }
-
-      // Skip the global .gemini directory itself during upward scan from CWD,
-      // as global is handled separately and explicitly first.
-      if (currentDir === path.join(resolvedHome, GEMINI_CONFIG_DIR)) {
-        if (debugMode) {
-          logger.debug(
-            `Upward scan reached global config dir path, stopping upward search here: ${currentDir}`,
-          );
+      subDirFiles.sort((a, b) => {
+        const depthA = a.split(path.sep).length;
+        const depthB = b.split(path.sep).length;
+        if (depthA !== depthB) {
+          return depthA - depthB;
         }
-        break;
+        return a.localeCompare(b);
+      });
+
+      for (const file of subDirFiles) {
+        await addPathIfFound(file);
       }
-
-      const potentialPath = path.join(currentDir, geminiMdFilename);
-      try {
-        await fs.access(potentialPath, fsSync.constants.R_OK);
-        // Add to upwardPaths only if it's not the already added globalMemoryPath
-        if (potentialPath !== globalMemoryPath) {
-          upwardPaths.unshift(potentialPath);
-          if (debugMode) {
-            logger.debug(
-              `Found readable upward ${geminiMdFilename}: ${potentialPath}`,
-            );
-          }
-        }
-      } catch {
-        if (debugMode) {
-          logger.debug(
-            `Upward ${geminiMdFilename} not found or not readable in: ${currentDir}`,
-          );
-        }
-      }
-
-      // Stop condition: if currentDir is the ultimateStopDir, break after this iteration.
-      if (currentDir === ultimateStopDir) {
-        if (debugMode)
-          logger.debug(
-            `Reached ultimate stop directory for upward scan: ${currentDir}`,
-          );
-        break;
-      }
-
-      currentDir = path.dirname(currentDir);
-    }
-    upwardPaths.forEach((p) => allPaths.add(p));
-
-    const downwardPaths = await bfsFileSearch(resolvedCwd, {
-      fileName: geminiMdFilename,
-      maxDirs: MAX_DIRECTORIES_TO_SCAN_FOR_MEMORY,
-      debug: debugMode,
-      fileService,
-    });
-    downwardPaths.sort(); // Sort for consistent ordering, though hierarchy might be more complex
-    if (debugMode && downwardPaths.length > 0)
-      logger.debug(
-        `Found downward ${geminiMdFilename} files (sorted): ${JSON.stringify(
-          downwardPaths,
-        )}`,
-      );
-    // Add downward paths only if they haven't been included already (e.g. from upward scan)
-    for (const dPath of downwardPaths) {
-      allPaths.add(dPath);
+    } catch (error) {
+      if (debugMode) console.error(`[MemoryDiscovery] Error scanning subdirectories: ${getErrorMessage(error)}`);
     }
   }
-
-  // Add extension context file paths
-  for (const extensionPath of extensionContextFilePaths) {
-    allPaths.add(extensionPath);
-  }
-
-  const finalPaths = Array.from(allPaths);
-
-  if (debugMode)
-    logger.debug(
-      `Final ordered ${getAllGeminiMdFilenames()} paths to read: ${JSON.stringify(
-        finalPaths,
-      )}`,
-    );
-  return finalPaths;
+  if (debugMode) console.log(`[MemoryDiscovery] Final ordered ${getAllMaxHeadroomMdFilenames()} paths to read: ${JSON.stringify(paths, null, 2)}`); // Renamed function call
+  return paths;
 }
 
-async function readGeminiMdFiles(
+
+/**
+ * Reads the content of context files from a list of paths.
+ * @param filePaths An array of absolute paths to context files.
+ * @param debugMode Optional flag to enable debug logging.
+ * @returns A promise that resolves to an array of objects, each containing the filePath and its content.
+ */
+async function readContextMdFiles( // Renamed
   filePaths: string[],
-  debugMode: boolean,
-): Promise<GeminiFileContent[]> {
-  const results: GeminiFileContent[] = [];
+  debugMode: boolean = false,
+): Promise<ContextFileContent[]> { // Renamed
+  const results: ContextFileContent[] = []; // Renamed
   for (const filePath of filePaths) {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       results.push({ filePath, content });
-      if (debugMode)
-        logger.debug(
-          `Successfully read: ${filePath} (Length: ${content.length})`,
-        );
-    } catch (error: unknown) {
-      const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
-      if (!isTestEnv) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.warn(
-          `Warning: Could not read ${getAllGeminiMdFilenames()} file at ${filePath}. Error: ${message}`,
+      if (debugMode) console.log(`[MemoryDiscovery] Read content from: ${filePath}`);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      if (debugMode) {
+        console.warn(
+          `[MemoryDiscovery] Warning: Could not read ${getAllMaxHeadroomMdFilenames()} file at ${filePath}. Error: ${message}`, // Renamed function call
         );
       }
-      results.push({ filePath, content: null }); // Still include it with null content
-      if (debugMode) logger.debug(`Failed to read: ${filePath}`);
     }
   }
   return results;
 }
 
-function concatenateInstructions(
-  instructionContents: GeminiFileContent[],
-  // CWD is needed to resolve relative paths for display markers
-  currentWorkingDirectoryForDisplay: string,
+/**
+ * Concatenates the content of multiple context files with separators.
+ * @param instructionContents An array of objects, each with filePath and content.
+ * @returns A single string with all contents concatenated.
+ */
+function concatenateContextMdContent( // Renamed
+  instructionContents: ContextFileContent[], // Renamed
+  debugMode: boolean = false,
 ): string {
+  if (debugMode) console.log(`[MemoryDiscovery] Concatenating ${instructionContents.length} context files.`);
   return instructionContents
-    .filter((item) => typeof item.content === 'string')
-    .map((item) => {
-      const trimmedContent = (item.content as string).trim();
-      if (trimmedContent.length === 0) {
-        return null;
-      }
-      const displayPath = path.isAbsolute(item.filePath)
-        ? path.relative(currentWorkingDirectoryForDisplay, item.filePath)
-        : item.filePath;
-      return `--- Context from: ${displayPath} ---\n${trimmedContent}\n--- End of Context from: ${displayPath} ---`;
-    })
-    .filter((block): block is string => block !== null)
+    .map(item => `--- Context from: ${item.filePath} ---\n${item.content}`)
     .join('\n\n');
 }
 
+
 /**
- * Loads hierarchical GEMINI.md files and concatenates their content.
- * This function is intended for use by the server.
+ * Loads hierarchical memory from context files (e.g. MAX_HEADROOM.md).
+ * The order of loading defines precedence: global, then project root/ancestors, then subdirectories.
+ * More specific files (deeper paths or later in explicit `contextFileName` array) effectively override or supplement broader ones.
  */
 export async function loadServerHierarchicalMemory(
   currentWorkingDirectory: string,
   debugMode: boolean,
   fileService: FileDiscoveryService,
   extensionContextFilePaths: string[] = [],
+  config?: Config,
 ): Promise<{ memoryContent: string; fileCount: number }> {
-  if (debugMode)
-    logger.debug(
-      `Loading server hierarchical memory for CWD: ${currentWorkingDirectory}`,
-    );
-  // For the server, homedir() refers to the server process's home.
-  // This is consistent with how MemoryTool already finds the global path.
-  const userHomePath = homedir();
-  const filePaths = await getGeminiMdFilePathsInternal(
+  const projectRoot = fileService.getProjectRoot();
+  const filePaths = await getContextMdFilePathsInternal( // Renamed
+    projectRoot,
     currentWorkingDirectory,
-    userHomePath,
     debugMode,
     fileService,
-    extensionContextFilePaths,
+    config,
   );
-  if (filePaths.length === 0) {
-    if (debugMode) logger.debug('No GEMINI.md files found in hierarchy.');
-    return { memoryContent: '', fileCount: 0 };
+
+  const validExtensionFiles: string[] = [];
+  for (const extPath of extensionContextFilePaths) {
+    const absPath = path.resolve(extPath);
+    if (await fileService.exists(absPath) && !filePaths.includes(absPath)) {
+      validExtensionFiles.push(absPath);
+      if (debugMode) console.log(`[MemoryDiscovery] Adding extension context file: ${absPath}`);
+    }
   }
-  const contentsWithPaths = await readGeminiMdFiles(filePaths, debugMode);
-  // Pass CWD for relative path display in concatenated content
-  const combinedInstructions = concatenateInstructions(
-    contentsWithPaths,
-    currentWorkingDirectory,
-  );
-  if (debugMode)
-    logger.debug(
-      `Combined instructions length: ${combinedInstructions.length}`,
-    );
-  if (debugMode && combinedInstructions.length > 0)
-    logger.debug(
-      `Combined instructions (snippet): ${combinedInstructions.substring(0, 500)}...`,
-    );
-  return { memoryContent: combinedInstructions, fileCount: filePaths.length };
+  const allPaths = [...filePaths, ...validExtensionFiles];
+  const uniquePaths = [...new Set(allPaths)];
+
+  if (debugMode) console.log(`[MemoryDiscovery] All unique context file paths to load: ${JSON.stringify(uniquePaths, null, 2)}`);
+
+  const contentsWithPaths = await readContextMdFiles(uniquePaths, debugMode); // Renamed
+  const memoryContent = concatenateContextMdContent(contentsWithPaths, debugMode); // Renamed
+  return { memoryContent, fileCount: contentsWithPaths.length };
 }

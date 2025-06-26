@@ -7,11 +7,11 @@
 import { type PartListUnion, type Part } from '@google/genai';
 
 /**
- * Represents a request to be sent to the Gemini API.
+ * Represents a request to be sent to the AI model's API.
  * For now, it's an alias to PartListUnion as the primary content.
  * This can be expanded later to include other request parameters.
  */
-export type GeminiCodeRequest = PartListUnion;
+export type AIRequest = PartListUnion; // Renamed from GeminiCodeRequest
 
 export function partListUnionToString(value: PartListUnion): string {
   if (typeof value === 'string') {

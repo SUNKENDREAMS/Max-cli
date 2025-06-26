@@ -8,7 +8,7 @@ import path from 'node:path';
 import os from 'os';
 import * as crypto from 'crypto';
 
-export const GEMINI_DIR = '.gemini';
+export const MAX_HEADROOM_DIR = '.max_headroom'; // Renamed
 const TMP_DIR_NAME = 'tmp';
 
 /**
@@ -155,5 +155,5 @@ export function getProjectHash(projectRoot: string): string {
  */
 export function getProjectTempDir(projectRoot: string): string {
   const hash = getProjectHash(projectRoot);
-  return path.join(os.homedir(), GEMINI_DIR, TMP_DIR_NAME, hash);
+  return path.join(os.homedir(), MAX_HEADROOM_DIR, TMP_DIR_NAME, hash); // Renamed
 }

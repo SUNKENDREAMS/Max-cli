@@ -1,46 +1,52 @@
-# Gemini CLI
+# Max Headroom CLI
 
-[![Gemini CLI CI](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml)
+[![Max Headroom CLI CI](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml) <!-- TODO: Update CI badge URL if repo/workflow name changes -->
 
-![Gemini CLI Screenshot](./docs/assets/gemini-screenshot.png)
+![Max Headroom Screenshot](./docs/assets/max-screenshot.png)
 
-This repository contains the Gemini CLI, a command-line AI workflow tool that connects to your
-tools, understands your code and accelerates your workflows.
+This repository contains the Max Headroom CLI, a command-line AI workflow tool that connects to your
+local AI models (e.g., via Ollama) and optionally to cloud-based models. It helps understand your code and accelerates your workflows in the APEN environment.
 
-With the Gemini CLI you can:
+With the Max Headroom CLI you can:
 
-- Query and edit large codebases in and beyond Gemini's 1M token context window.
-- Generate new apps from PDFs or sketches, using Gemini's multimodal capabilities.
-- Automate operational tasks, like querying pull requests or handling complex rebases.
-- Use tools and MCP servers to connect new capabilities, including [media generation with Imagen,
-  Veo or Lyria](https://github.com/GoogleCloudPlatform/vertex-ai-creative-studio/tree/main/experiments/mcp-genmedia)
-- Ground your queries with the [Google Search](https://ai.google.dev/gemini-api/docs/grounding)
-  tool, built in to Gemini.
+- Query and edit large codebases within your model's context window.
+- Generate new apps from PDFs or sketches, using multimodal capabilities if supported by your chosen model.
+- Automate operational tasks.
+- Use tools and MCP servers to connect new capabilities.
+- (If configured with Google Gemini) Ground your queries with Google Search. This tool will be disabled by default for APEN.
 
-## Quickstart
+## Quickstart (for APEN environment)
 
-1. **Prerequisites:** Ensure you have [Node.js version 18](https://nodejs.org/en/download) or higher installed.
-2. **Run the CLI:** Execute the following command in your terminal:
-
+1. **Prerequisites:**
+    - Ensure you have [Node.js version 18](https://nodejs.org/en/download) or higher installed.
+    - Have Ollama installed and running with your desired models (e.g., `ollama pull mistral`).
+2. **Install Max Headroom CLI:**
+   Obtain the `max-headroom-cli` package (e.g., as a `.tgz` file or from an internal npm registry) and install it globally:
    ```bash
-   npx https://github.com/google-gemini/gemini-cli
+   # Example from local tarball
+   npm install -g ./max-headroom-cli-vX.Y.Z.tgz
+   # Or from internal registry
+   # npm install -g max-headroom-cli
    ```
-
-   Or install it with:
-
+3. **Run the CLI:**
    ```bash
-   npm install -g @google/gemini-cli
-   gemini
+   max-headroom
    ```
+4. **Pick a color theme.**
+5. **Authenticate:** When prompted, select "Ollama (Local)" and ensure your `OLLAMA_ENDPOINT` (and optionally `OLLAMA_MODEL`) environment variables are set correctly (e.g., in `~/.max_headroom/.env` or project `.max_headroom/.env`).
 
-3. **Pick a color theme**
-4. **Authenticate:** When prompted, sign in with your personal Google account. This will grant you up to 60 model requests per minute and 1,000 model requests per day using Gemini.
+You are now ready to use the Max Headroom CLI with your local models!
 
-You are now ready to use the Gemini CLI!
+### Optional: Using Google Gemini API (if APEN environment permits and is configured)
 
-### For advanced use or increased limits:
-
-If you need to use a specific model or require a higher request capacity, you can use an API key:
+If your APEN environment has access to Google Cloud and you wish to use Gemini models:
+1. Generate an API key from [Google AI Studio](https://aistudio.google.com/apikey).
+2. Set it as an environment variable:
+   ```bash
+   export GEMINI_API_KEY="YOUR_API_KEY"
+   ```
+3. Select "Gemini API Key" during `/auth` setup in Max Headroom.
+For other Google authentication methods, see the [authentication](./docs/cli/authentication.md) guide.
 
 1. Generate a key from [Google AI Studio](https://aistudio.google.com/apikey).
 2. Set it as an environment variable in your terminal. Replace `YOUR_API_KEY` with your generated key.
@@ -53,22 +59,22 @@ For other authentication methods, including Google Workspace accounts, see the [
 
 ## Examples
 
-Once the CLI is running, you can start interacting with Gemini from your shell.
+Once the CLI is running, you can start interacting with your configured AI model from your shell.
 
 You can start a project from a new directory:
 
 ```sh
 cd new-project/
-gemini
-> Write me a Gemini Discord bot that answers questions using a FAQ.md file I will provide
+max-headroom
+> Write me a Max Headroom Discord bot that answers questions using a FAQ.md file I will provide
 ```
 
 Or work with an existing project:
 
 ```sh
-git clone https://github.com/google-gemini/gemini-cli
-cd gemini-cli
-gemini
+git clone <your-fork-url>/max-headroom-cli.git # TODO: Update clone URL
+cd max-headroom-cli
+max-headroom
 > Give me a summary of all of the changes that went in yesterday
 ```
 
@@ -89,7 +95,7 @@ having issues.
 
 ### Explore a new codebase
 
-Start by `cd`ing into an existing or newly-cloned repository and running `gemini`.
+Start by `cd`ing into an existing or newly-cloned repository and running `max-headroom`.
 
 ```text
 > Describe the main pieces of this system's architecture.
@@ -133,4 +139,4 @@ Use MCP servers to integrate your local system tools with your enterprise collab
 
 ## Terms of Service and Privacy Notice
 
-For details on the terms of service and privacy notice applicable to your use of Gemini CLI, see the [Terms of Service and Privacy Notice](./docs/tos-privacy.md).
+For details on the terms of service and privacy notice applicable to your use of Max Headroom CLI (especially when using local models), see the [Terms of Service and Privacy Notice](./docs/tos-privacy.md). If you optionally configure cloud services, their respective terms apply.

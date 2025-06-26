@@ -7,35 +7,35 @@
 import React from 'react';
 import { Text } from 'ink';
 import { Colors } from '../colors.js';
-import { type MCPServerConfig } from '@google/gemini-cli-core';
+import { type MCPServerConfig } from 'max-headroom-cli-core'; // Updated import
 
 interface ContextSummaryDisplayProps {
-  geminiMdFileCount: number;
+  contextFileCount: number; // Renamed
   contextFileNames: string[];
   mcpServers?: Record<string, MCPServerConfig>;
   showToolDescriptions?: boolean;
 }
 
 export const ContextSummaryDisplay: React.FC<ContextSummaryDisplayProps> = ({
-  geminiMdFileCount,
+  contextFileCount, // Renamed
   contextFileNames,
   mcpServers,
   showToolDescriptions,
 }) => {
   const mcpServerCount = Object.keys(mcpServers || {}).length;
 
-  if (geminiMdFileCount === 0 && mcpServerCount === 0) {
+  if (contextFileCount === 0 && mcpServerCount === 0) { // Renamed
     return <Text> </Text>; // Render an empty space to reserve height
   }
 
-  const geminiMdText = (() => {
-    if (geminiMdFileCount === 0) {
+  const contextFileText = (() => { // Renamed
+    if (contextFileCount === 0) { // Renamed
       return '';
     }
     const allNamesTheSame = new Set(contextFileNames).size < 2;
     const name = allNamesTheSame ? contextFileNames[0] : 'context';
-    return `${geminiMdFileCount} ${name} file${
-      geminiMdFileCount > 1 ? 's' : ''
+    return `${contextFileCount} ${name} file${ // Renamed
+      contextFileCount > 1 ? 's' : '' // Renamed
     }`;
   })();
 
@@ -45,10 +45,10 @@ export const ContextSummaryDisplay: React.FC<ContextSummaryDisplayProps> = ({
       : '';
 
   let summaryText = 'Using ';
-  if (geminiMdText) {
-    summaryText += geminiMdText;
+  if (contextFileText) { // Renamed
+    summaryText += contextFileText; // Renamed
   }
-  if (geminiMdText && mcpText) {
+  if (contextFileText && mcpText) { // Renamed
     summaryText += ' and ';
   }
   if (mcpText) {

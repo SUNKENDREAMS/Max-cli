@@ -7,7 +7,7 @@
  */
 
 import './src/gemini.js';
-import { main } from './src/gemini.js';
+import { main } from './src/maxHeadroom.js';
 
 // --- Global Entry Point ---
 main().catch((error) => {

@@ -1,58 +1,61 @@
-# Gemini CLI: Terms of Service and Privacy Notice
+# Max Headroom: Terms of Service and Privacy Notice Considerations
 
-Gemini CLI is an open-source tool that allows you to interact with Google's powerful language models directly from your command-line interface. The terms of service and privacy notices that apply to your usage of Gemini CLI depend on the type of account you use to authenticate with Google.
+Max Headroom is an open-source tool that allows you to interact with AI models. Its design prioritizes use with local, offline models (e.g., via Ollama), but it can also be configured to connect with cloud-based AI services. The terms and privacy considerations vary significantly based on how you use it.
 
-This article outlines the specific terms and privacy policies applicable for different auth methods.
+**Key Principle for Offline Use:** When Max Headroom is used with local models like Ollama, your prompts, the code it analyzes, and the responses generated **stay on your local machine** and are not transmitted to any external servers by Max Headroom itself.
 
-## 1. Login with Google (Gemini Code Assist for [individuals](https://developers.google.com/gemini-code-assist/docs/overview#supported-features-gca))
+## 1. Using Max Headroom with Local Offline Models (e.g., Ollama)
 
-For users who authenticate using their Google account to access Gemini Code Assist for individuals:
+This is the primary intended use case for Max Headroom in a restricted environment.
 
-- Terms of Service: Your use of Gemini CLI is governed by the general [Google Terms of Service](https://policies.google.com/terms?hl=en-US).
-- Privacy Notice: The collection and use of your data are described in the [Gemini Code Assist Privacy Notice for Individuals](https://developers.google.com/gemini-code-assist/resources/privacy-notice-gemini-code-assist-individuals).
+-   **Terms of Service:**
+    -   Your use of the Max Headroom software is governed by its open-source license (e.g., Apache 2.0, assuming it's inherited from Gemini CLI).
+    -   Your use of the local AI model provider (e.g., Ollama) and any models you download for it are subject to their respective licenses and terms.
+-   **Privacy & Data Handling:**
+    -   **No Data Transmission by Max Headroom:** Max Headroom, when configured for local models, does not send your prompts, code snippets, or AI-generated responses to any external servers. All interaction with the AI model occurs locally.
+    -   **Local Storage:**
+        -   Configuration files (e.g., `settings.json`) are stored in `~/.max_headroom/` (user) and `<project_root>/.max_headroom/` (project).
+        -   Context files (`MAX_HEADROOM.md`) are stored where you create them.
+        -   Command history is stored locally.
+        -   Any files read or written by tools operate on your local file system under your user permissions.
+    -   **Your Responsibility:** You are responsible for the security of your local machine and the data you process with Max Headroom. Ensure that access to your machine and these local files is controlled according to your environment's policies.
 
-## 2. Gemini API Key (Using Gemini Developer [API](https://ai.google.dev/gemini-api/docs) a: Unpaid Service, b: Paid Service)
+## 2. Using Max Headroom with Cloud-Based AI Services (Optional, e.g., Google Gemini API)
 
-If you are using a Gemini API key for authentication, the following terms apply:
+If you choose to configure Max Headroom to connect to an external, cloud-based AI service (like Google's Gemini API, or others), the following applies:
 
-- Terms of Service: Your use is subject to the [Gemini API Terms of Service](https://ai.google.dev/gemini-api/terms). For a. [Unpaid Service](https://ai.google.dev/gemini-api/terms#unpaid-services) or b. [Paid Service](https://ai.google.dev/gemini-api/terms#paid-services)
-- Privacy Notice: Information regarding data handling and privacy is detailed in the general [Google Privacy Policy](https://policies.google.com/privacy).
+-   **Terms of Service:** Your use of that specific cloud AI service is governed by **that provider's Terms of Service.** For example, if using the Gemini API, the [Google AI Generative Language Models API Terms of Service](https://ai.google.dev/terms) would apply.
+-   **Privacy & Data Handling:**
+    -   **Data Transmission:** When using a cloud service, your prompts, any context sent (e.g., content of files provided via `@` command), and other interactions will be transmitted to that cloud provider.
+    -   **Provider's Policies Apply:** The cloud provider's privacy policy and data usage terms will dictate how your data is collected, used, stored, and protected. This may include usage for service improvement, model training (unless specified otherwise by enterprise terms), and human review.
+    -   **Confidential Information:** **Exercise extreme caution.** Do not send confidential or sensitive information to any third-party cloud service unless you fully understand and accept their data handling practices and have the necessary authorizations.
+    -   For Google services, refer to the relevant Google privacy policies, the Gemini Apps Privacy Hub, and specific terms for Workspace or Cloud accounts if applicable.
 
-## 3. Login with Google (for Workspace or Licensed Code Assist users)
+## Usage Statistics and Telemetry (for Max Headroom)
 
-For users of Standard or Enterprise [edition](https://cloud.google.com/gemini/docs/codeassist/overview#editions-overview) of Gemini Code Assist :
+For Max Headroom deployed in a closed, offline environment:
 
-- Terms of Service: The [Google Cloud Platform Terms of Service](https://cloud.google.com/terms) govern your use of the service.
-- Privacy Notice: The handling of your data is outlined in the [Gemini Code Assist Privacy Notices](https://developers.google.com/gemini-code-assist/resources/privacy-notices).
+-   **Disabled by Default:** All telemetry and external usage statistics reporting features that might have been inherited from Gemini CLI should be **disabled by default** in the application's configuration for such deployments.
+-   **Configuration:**
+    -   Ensure `telemetry.enabled` is `false` in `settings.json`.
+    -   Ensure `usageStatisticsEnabled` is `false` in `settings.json`.
+-   **No External Data Collection:** The goal is that Max Headroom itself does not initiate any network connections to external servers for telemetry or usage statistics in its offline-first configuration.
+-   **Local Diagnostics Only:** If any telemetry-like code is retained for local debugging purposes (e.g., outputting to a local file or a local OTLP collector), it must be explicitly enabled for that specific debugging session and must not transmit data externally.
+-   Refer to the [Telemetry documentation](./telemetry.md) for more details on how telemetry *would* function if it were enabled (primarily for understanding local debugging capabilities).
 
-## 4. Vertex AI (Using Vertex AI Gen [API](https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest))
+## Frequently Asked Questions (FAQ) for Max Headroom
 
-If you are using an API key with a Vertex AI Gen API backend:
+-   **Q: When using Max Headroom with Ollama, is my data sent to Google or any other cloud?**
+    -   **A:** No. When configured solely with Ollama or other local models, Max Headroom processes your data locally. There is no transmission to Google or other external cloud services by Max Headroom.
 
-- Terms of Service: Your usage is governed by the [Google Cloud Platform Service Terms](https://cloud.google.com/terms/service-terms/).
-- Privacy Notice: The [Google Cloud Privacy Notice](https://cloud.google.com/terms/cloud-privacy-notice) describes how your data is collected and managed.
+-   **Q: If I optionally configure Max Headroom to use the Gemini API, what happens to my data?**
+    -   **A:** Your prompts and any provided context will be sent to Google, and Google's terms and privacy policies for the Gemini API will apply. Review those carefully.
 
-### Usage Statistics Opt-Out
+-   **Q: How can I be sure Max Headroom isn't sending data externally in my closed environment?**
+    -   **A:**
+        1.  Ensure you are using an authentication method for a local model provider (e.g., Ollama).
+        2.  Verify that telemetry settings (`telemetry.enabled` and `usageStatisticsEnabled`) are `false` in your `settings.json` files.
+        3.  Monitor network traffic from the machine running Max Headroom if further assurance is needed.
+        4.  For builds specifically for the closed environment, any code responsible for external telemetry calls could be reviewed for removal or stubbing.
 
-You may opt-out from sending Usage Statistics to Google data by following the instructions available here: [Usage Statistics Configuration](./cli/configuration.md#usage-statistics).
-
-## Frequently Asked Questions (FAQ) for Gemini CLI
-
-### 1. Is my code, including prompts and answers, used to train Google's models?
-
-This depends entirely on the type of auth method you use.
-
-- **Auth method 1:** Yes. When you use your personal Google account, the Gemini Code Assist Privacy Notice for Individuals applies. Under this notice, your **prompts, answers, and related code are collected** and may be used to improve Google's products, which includes model training.
-- **Auth method 2a:** Yes, When you use the Gemini API key Gemini API (Unpaid Service) terms apply. Under this notice , your **prompts, answers, and related code are collected** and may be used to improve Google's products, which includes model training.
-- **Auth method 2b, 3 & 4:** No. For these accounts, your data is governed by the Google Cloud or Gemini API (Paid Service) terms, which treat your inputs as confidential. Your code, prompts, and other inputs are **not** used to train models.
-
-### 2. What are "Usage Statistics" and what does the opt-out control?
-
-The "Usage Statistics" setting is the single control for all optional data collection in the Gemini CLI. The data it collects depends on your account type:
-
-- **Auth method 1:** When enabled, this setting allows Google to collect both anonymous telemetry (like commands run and performance metrics) and **your prompts and answers** for model improvement.
-- **Auth method 2a:** When enabled, this setting allows Google to collect both anonymous telemetry (like commands run and performance metrics) and **your prompts and answers** for model improvement. When disabled we will use your data as described in the [How Google Uses Your Data](https://ai.google.dev/gemini-api/terms#data-use-unpaid).
-- **Auth method 2b:** This setting only controls the collection of anonymous telemetry. Google logs prompts and responses for a limited period of time, solely for the purpose of detecting violations of the Prohibited Use Policy and any required legal or regulatory disclosures
-- **Auth methods 3 & 4:** This setting only controls the collection of anonymous telemetry. Your prompts and answers are never collected, regardless of this setting.
-
-You can disable Usage Statistics for any account type by following the instructions in the [Usage Statistics Configuration](./cli/configuration.md#usage-statistics) documentation.
+Always prioritize understanding the data flow and terms of any component you use, especially when handling sensitive information. For Max Headroom in a closed environment with local models, the design intent is to keep your data local.

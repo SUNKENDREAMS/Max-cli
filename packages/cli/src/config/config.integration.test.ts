@@ -12,7 +12,7 @@ import {
   Config,
   ConfigParameters,
   ContentGeneratorConfig,
-} from '@google/gemini-cli-core';
+} from 'max-headroom-cli-core'; // Renamed import
 
 const TEST_CONTENT_GENERATOR_CONFIG: ContentGeneratorConfig = {
   apiKey: 'test-key',
@@ -21,8 +21,8 @@ const TEST_CONTENT_GENERATOR_CONFIG: ContentGeneratorConfig = {
 };
 
 // Mock file discovery service and tool registry
-vi.mock('@google/gemini-cli-core', async () => {
-  const actual = await vi.importActual('@google/gemini-cli-core');
+vi.mock('max-headroom-cli-core', async () => { // Renamed mock path
+  const actual = await vi.importActual('max-headroom-cli-core'); // Renamed mock path
   return {
     ...actual,
     FileDiscoveryService: vi.fn().mockImplementation(() => ({
@@ -37,9 +37,10 @@ describe('Configuration Integration Tests', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'gemini-cli-test-'));
+    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'max-headroom-cli-test-')); // Renamed temp dir prefix
     originalEnv = { ...process.env };
-    process.env.GEMINI_API_KEY = 'test-api-key';
+    process.env.TEST_API_KEY = 'test-api-key'; // Generic API key for testing env var loading
+    // process.env.GEMINI_API_KEY = 'test-api-key'; // Old one commented out
     vi.clearAllMocks();
   });
 

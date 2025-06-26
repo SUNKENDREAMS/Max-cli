@@ -28,10 +28,10 @@ describe('loadExtensions', () => {
 
   beforeEach(() => {
     tempWorkspaceDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'gemini-cli-test-workspace-'),
+      path.join(os.tmpdir(), 'max-headroom-cli-test-workspace-'), // Renamed
     );
     tempHomeDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'gemini-cli-test-home-'),
+      path.join(os.tmpdir(), 'max-headroom-cli-test-home-'), // Renamed
     );
     vi.mocked(os.homedir).mockReturnValue(tempHomeDir);
   });
@@ -41,13 +41,13 @@ describe('loadExtensions', () => {
     fs.rmSync(tempHomeDir, { recursive: true, force: true });
   });
 
-  it('should load context file path when GEMINI.md is present', () => {
+  it('should load context file path when MAX_HEADROOM.md is present', () => { // Renamed test description
     const workspaceExtensionsDir = path.join(
       tempWorkspaceDir,
       EXTENSIONS_DIRECTORY_NAME,
     );
     fs.mkdirSync(workspaceExtensionsDir, { recursive: true });
-    createExtension(workspaceExtensionsDir, 'ext1', '1.0.0', true);
+    createExtension(workspaceExtensionsDir, 'ext1', '1.0.0', true, 'MAX_HEADROOM.md'); // Pass new default
     createExtension(workspaceExtensionsDir, 'ext2', '2.0.0');
 
     const extensions = loadExtensions(tempWorkspaceDir);
@@ -56,7 +56,7 @@ describe('loadExtensions', () => {
     const ext1 = extensions.find((e) => e.config.name === 'ext1');
     const ext2 = extensions.find((e) => e.config.name === 'ext2');
     expect(ext1?.contextFiles).toEqual([
-      path.join(workspaceExtensionsDir, 'ext1', 'GEMINI.md'),
+      path.join(workspaceExtensionsDir, 'ext1', 'MAX_HEADROOM.md'), // Renamed
     ]);
     expect(ext2?.contextFiles).toEqual([]);
   });
@@ -99,11 +99,14 @@ function createExtension(
     JSON.stringify({ name, version, contextFileName }),
   );
 
-  if (addContextFile) {
-    fs.writeFileSync(path.join(extDir, 'GEMINI.md'), 'context');
+  if (addContextFile && contextFileName === 'MAX_HEADROOM.md') { // Ensure we use the new default if specified by test
+    fs.writeFileSync(path.join(extDir, 'MAX_HEADROOM.md'), 'context');
+  } else if (addContextFile && !contextFileName) { // If old test calls it without specifying filename
+     fs.writeFileSync(path.join(extDir, 'MAX_HEADROOM.md'), 'context');
   }
 
-  if (contextFileName) {
+
+  if (contextFileName && contextFileName !== 'MAX_HEADROOM.md') { // If a custom one is given, different from new default
     fs.writeFileSync(path.join(extDir, contextFileName), 'context');
   }
 }

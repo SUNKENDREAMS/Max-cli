@@ -7,7 +7,7 @@
 import {
   ToolCallConfirmationDetails,
   ToolResultDisplay,
-} from '@google/gemini-cli-core';
+} from 'max-headroom-cli-core'; // Updated import
 import { CumulativeStats } from './contexts/SessionContext.js';
 
 // Only defining the state enum needed by the UI
@@ -68,13 +68,13 @@ export type HistoryItemUser = HistoryItemBase & {
   text: string;
 };
 
-export type HistoryItemGemini = HistoryItemBase & {
-  type: 'gemini';
+export type HistoryItemAI = HistoryItemBase & { // Renamed
+  type: 'ai'; // Renamed
   text: string;
 };
 
-export type HistoryItemGeminiContent = HistoryItemBase & {
-  type: 'gemini_content';
+export type HistoryItemAIContent = HistoryItemBase & { // Renamed
+  type: 'ai_content'; // Renamed
   text: string;
 };
 
@@ -131,8 +131,8 @@ export type HistoryItemCompression = HistoryItemBase & {
 export type HistoryItemWithoutId =
   | HistoryItemUser
   | HistoryItemUserShell
-  | HistoryItemGemini
-  | HistoryItemGeminiContent
+  | HistoryItemAI // Renamed
+  | HistoryItemAIContent // Renamed
   | HistoryItemInfo
   | HistoryItemError
   | HistoryItemAbout
@@ -151,7 +151,7 @@ export enum MessageType {
   ABOUT = 'about',
   STATS = 'stats',
   QUIT = 'quit',
-  GEMINI = 'gemini',
+  AI = 'ai', // Renamed from GEMINI
   COMPRESSION = 'compression',
 }
 

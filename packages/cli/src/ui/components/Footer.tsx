@@ -7,7 +7,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { Colors } from '../colors.js';
-import { shortenPath, tildeifyPath, tokenLimit } from '@google/gemini-cli-core';
+import { shortenPath, tildeifyPath, tokenLimit } from 'max-headroom-cli-core'; // Updated import
 import { ConsoleSummaryDisplay } from './ConsoleSummaryDisplay.js';
 import process from 'node:process';
 import { MemoryUsageDisplay } from './MemoryUsageDisplay.js';
@@ -65,7 +65,7 @@ export const Footer: React.FC<FooterProps> = ({
       >
         {process.env.SANDBOX && process.env.SANDBOX !== 'sandbox-exec' ? (
           <Text color="green">
-            {process.env.SANDBOX.replace(/^gemini-(?:cli-)?/, '')}
+            {process.env.SANDBOX.replace(/^max-headroom-(?:cli-)?/, '')}
           </Text>
         ) : process.env.SANDBOX === 'sandbox-exec' ? (
           <Text color={Colors.AccentYellow}>

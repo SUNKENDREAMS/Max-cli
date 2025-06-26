@@ -12,7 +12,7 @@ import {
   Part,
   GenerateContentResponse,
 } from '@google/genai';
-import { GeminiChat } from './geminiChat.js';
+import { AIChat } from './AIChat.js'; // Renamed from geminiChat.js
 import { Config } from '../config/config.js';
 import { AuthType } from '../core/contentGenerator.js';
 import { setSimulate429 } from '../utils/testUtils.js';
@@ -26,8 +26,8 @@ const mockModelsModule = {
   batchEmbedContents: vi.fn(),
 } as unknown as Models;
 
-describe('GeminiChat', () => {
-  let chat: GeminiChat;
+describe('AIChat', () => { // Renamed
+  let chat: AIChat; // Renamed
   let mockConfig: Config;
   const config: GenerateContentConfig = {};
 
@@ -39,21 +39,21 @@ describe('GeminiChat', () => {
       getUsageStatisticsEnabled: () => true,
       getDebugMode: () => false,
       getContentGeneratorConfig: () => ({
-        authType: AuthType.USE_GEMINI,
-        model: 'test-model',
+        authType: AuthType.OLLAMA, // Changed to Ollama for testing offline path
+        model: 'ollama/mistral', // Changed to a local model example
       }),
-      getModel: vi.fn().mockReturnValue('gemini-pro'),
+      getModel: vi.fn().mockReturnValue('ollama/mistral'), // Changed
       setModel: vi.fn(),
-      getGeminiClient: vi.fn().mockReturnValue({
-        generateJson: vi.fn().mockResolvedValue({ model: 'pro' }),
+      getAIClient: vi.fn().mockReturnValue({ // Renamed from getGeminiClient
+        generateJson: vi.fn().mockResolvedValue({ model: 'ollama/mistral' }), // Adjusted mock
       }),
-      flashFallbackHandler: undefined,
+      // flashFallbackHandler is no longer part of Config
     } as unknown as Config;
 
     // Disable 429 simulation for tests
     setSimulate429(false);
     // Reset history for each test by creating a new instance
-    chat = new GeminiChat(mockConfig, mockModelsModule, config, []);
+    chat = new AIChat(mockConfig, mockModelsModule, config, []); // Renamed
   });
 
   afterEach(() => {
@@ -82,7 +82,7 @@ describe('GeminiChat', () => {
       await chat.sendMessage({ message: 'hello' });
 
       expect(mockModelsModule.generateContent).toHaveBeenCalledWith({
-        model: 'gemini-pro',
+        model: 'ollama/mistral', // Changed
         contents: [{ role: 'user', parts: [{ text: 'hello' }] }],
         config: {},
       });
@@ -90,7 +90,10 @@ describe('GeminiChat', () => {
   });
 
   describe('sendMessageStream', () => {
-    it('should call generateContentStream with the correct parameters', async () => {
+    // This test might need more significant changes as _selectModel logic was removed
+    // and it directly used DEFAULT_GEMINI_MODEL and DEFAULT_GEMINI_FLASH_MODEL
+    // For now, we'll assume it uses the configured model.
+    it('should call generateContentStream with the configured model', async () => {
       const response = (async function* () {
         yield {
           candidates: [
@@ -114,7 +117,7 @@ describe('GeminiChat', () => {
       await chat.sendMessageStream({ message: 'hello' });
 
       expect(mockModelsModule.generateContentStream).toHaveBeenCalledWith({
-        model: 'gemini-2.5-pro',
+        model: 'ollama/mistral', // Changed - now reflects the simplified _selectModel
         contents: [{ role: 'user', parts: [{ text: 'hello' }] }],
         config: {},
       });
