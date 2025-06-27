@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MCPServerConfig } from '@google/gemini-cli-core';
+import { MCPServerConfig } from 'max-headroom-cli-core'; // Renamed
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-export const EXTENSIONS_DIRECTORY_NAME = path.join('.gemini', 'extensions');
-export const EXTENSIONS_CONFIG_FILENAME = 'gemini-extension.json';
+export const EXTENSIONS_DIRECTORY_NAME = path.join('.max_headroom', 'extensions'); // Renamed
+export const EXTENSIONS_CONFIG_FILENAME = 'max-headroom-extension.json'; // Renamed
 
 export interface Extension {
   config: ExtensionConfig;
@@ -107,7 +107,7 @@ function loadExtension(extensionDir: string): Extension | null {
 
 function getContextFileNames(config: ExtensionConfig): string[] {
   if (!config.contextFileName) {
-    return ['GEMINI.md'];
+    return ['MAX_HEADROOM.md']; // Renamed default
   } else if (!Array.isArray(config.contextFileName)) {
     return [config.contextFileName];
   }

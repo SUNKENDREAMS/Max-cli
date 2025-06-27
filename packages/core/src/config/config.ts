@@ -21,10 +21,10 @@ import { ShellTool } from '../tools/shell.js';
 import { WriteFileTool } from '../tools/write-file.js';
 import { WebFetchTool } from '../tools/web-fetch.js';
 import { ReadManyFilesTool } from '../tools/read-many-files.js';
-import { MemoryTool, setGeminiMdFilename } from '../tools/memoryTool.js';
+import { MemoryTool, setMaxHeadroomMdFilename } from '../tools/memoryTool.js'; // Renamed
 import { WebSearchTool } from '../tools/web-search.js';
-import { GeminiClient } from '../core/client.js';
-import { GEMINI_CONFIG_DIR as GEMINI_DIR } from '../tools/memoryTool.js';
+import { AIClient } from '../core/client.js'; // Renamed GeminiClient
+import { MAX_HEADROOM_CONFIG_DIR } from '../tools/memoryTool.js'; // Used directly
 import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
 import { GitService } from '../services/gitService.js';
 import { getProjectTempDir } from '../utils/paths.js';
@@ -36,8 +36,8 @@ import {
   StartSessionEvent,
 } from '../telemetry/index.js';
 import {
-  DEFAULT_GEMINI_EMBEDDING_MODEL,
-  DEFAULT_GEMINI_FLASH_MODEL,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  // DEFAULT_GEMINI_FLASH_MODEL, // Removed
 } from './models.js';
 import { ClearcutLogger } from '../telemetry/clearcut-logger/clearcut-logger.js';
 
@@ -108,7 +108,7 @@ export interface ConfigParameters {
   mcpServerCommand?: string;
   mcpServers?: Record<string, MCPServerConfig>;
   userMemory?: string;
-  geminiMdFileCount?: number;
+  contextFileCount?: number; // Renamed
   approvalMode?: ApprovalMode;
   showMemoryUsage?: boolean;
   contextFileName?: string | string[];
@@ -145,13 +145,13 @@ export class Config {
   private readonly mcpServerCommand: string | undefined;
   private readonly mcpServers: Record<string, MCPServerConfig> | undefined;
   private userMemory: string;
-  private geminiMdFileCount: number;
+  private contextFileCount: number; // Renamed
   private approvalMode: ApprovalMode;
   private readonly showMemoryUsage: boolean;
   private readonly accessibility: AccessibilitySettings;
   private readonly telemetrySettings: TelemetrySettings;
   private readonly usageStatisticsEnabled: boolean;
-  private geminiClient!: GeminiClient;
+  private aiClient!: AIClient; // Renamed from geminiClient
   private readonly fileFiltering: {
     respectGitIgnore: boolean;
     enableRecursiveFileSearch: boolean;
@@ -170,7 +170,7 @@ export class Config {
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
     this.embeddingModel =
-      params.embeddingModel ?? DEFAULT_GEMINI_EMBEDDING_MODEL;
+      params.embeddingModel ?? DEFAULT_LOCAL_EMBEDDING_MODEL;
     this.sandbox = params.sandbox;
     this.targetDir = path.resolve(params.targetDir);
     this.debugMode = params.debugMode;
@@ -183,7 +183,7 @@ export class Config {
     this.mcpServerCommand = params.mcpServerCommand;
     this.mcpServers = params.mcpServers;
     this.userMemory = params.userMemory ?? '';
-    this.geminiMdFileCount = params.geminiMdFileCount ?? 0;
+    this.contextFileCount = params.contextFileCount ?? 0; // Renamed param name
     this.approvalMode = params.approvalMode ?? ApprovalMode.DEFAULT;
     this.showMemoryUsage = params.showMemoryUsage ?? false;
     this.accessibility = params.accessibility ?? {};
@@ -209,19 +209,20 @@ export class Config {
     this.extensionContextFilePaths = params.extensionContextFilePaths ?? [];
 
     if (params.contextFileName) {
-      setGeminiMdFilename(params.contextFileName);
+      setMaxHeadroomMdFilename(params.contextFileName); // Renamed
     }
 
-    if (this.telemetrySettings.enabled) {
-      initializeTelemetry(this);
-    }
+    // if (this.telemetrySettings.enabled) { // Telemetry explicitly disabled for APEN
+    //   initializeTelemetry(this);
+    // }
 
-    if (this.getUsageStatisticsEnabled()) {
-      ClearcutLogger.getInstance(this)?.logStartSessionEvent(
-        new StartSessionEvent(this),
-      );
+    // Usage statistics also depend on telemetry pipeline, so disable if telemetry is disabled.
+    if (this.telemetrySettings.enabled && this.getUsageStatisticsEnabled()) {
+      // ClearcutLogger.getInstance(this)?.logStartSessionEvent( // Commented out
+      //   new StartSessionEvent(this),
+      // );
     } else {
-      console.log('Data collection is disabled.');
+      console.log('Data collection (telemetry/usage statistics) is disabled.');
     }
   }
 
@@ -246,10 +247,10 @@ export class Config {
       this,
     );
 
-    const gc = new GeminiClient(this);
-    this.geminiClient = gc;
+    const client = new AIClient(this); // Renamed from GeminiClient
+    this.aiClient = client; // Renamed from geminiClient
     this.toolRegistry = await createToolRegistry(this);
-    await gc.initialize(contentConfig);
+    await client.initialize(contentConfig); // Renamed from gc
     this.contentGeneratorConfig = contentConfig;
 
     // Reset the session flag since we're explicitly changing auth and using default model
@@ -355,12 +356,12 @@ export class Config {
     this.userMemory = newUserMemory;
   }
 
-  getGeminiMdFileCount(): number {
-    return this.geminiMdFileCount;
+  getContextFileCount(): number { // Renamed
+    return this.contextFileCount;
   }
 
-  setGeminiMdFileCount(count: number): void {
-    this.geminiMdFileCount = count;
+  setContextFileCount(count: number): void { // Renamed
+    this.contextFileCount = count;
   }
 
   getApprovalMode(): ApprovalMode {
@@ -395,12 +396,12 @@ export class Config {
     return this.telemetrySettings.target ?? DEFAULT_TELEMETRY_TARGET;
   }
 
-  getGeminiClient(): GeminiClient {
-    return this.geminiClient;
+  getAIClient(): AIClient { // Renamed from getGeminiClient
+    return this.aiClient; // Renamed from geminiClient
   }
 
-  getGeminiDir(): string {
-    return path.join(this.targetDir, GEMINI_DIR);
+  getMaxHeadroomDir(): string {
+    return path.join(this.targetDir, MAX_HEADROOM_CONFIG_DIR);
   }
 
   getProjectTempDir(): string {
@@ -487,11 +488,11 @@ export function createToolRegistry(config: Config): Promise<ToolRegistry> {
   registerCoreTool(GlobTool, targetDir, config);
   registerCoreTool(EditTool, config);
   registerCoreTool(WriteFileTool, config);
-  registerCoreTool(WebFetchTool, config);
+  // registerCoreTool(WebFetchTool, config); // Disabled for offline focus
   registerCoreTool(ReadManyFilesTool, targetDir, config);
   registerCoreTool(ShellTool, config);
   registerCoreTool(MemoryTool);
-  registerCoreTool(WebSearchTool, config);
+  // registerCoreTool(WebSearchTool, config); // Disabled for offline focus
   return (async () => {
     await registry.discoverTools();
     return registry;
@@ -499,4 +500,4 @@ export function createToolRegistry(config: Config): Promise<ToolRegistry> {
 }
 
 // Export model constants for use in CLI
-export { DEFAULT_GEMINI_FLASH_MODEL };
+// export { DEFAULT_GEMINI_FLASH_MODEL }; // Removed as it's cloud-specific and its definition was removed from models.ts

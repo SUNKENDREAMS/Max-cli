@@ -9,9 +9,9 @@ import { loadEnvironment } from './config.js';
 
 export const validateAuthMethod = (authMethod: string): string | null => {
   loadEnvironment();
-  if (authMethod === AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
-    return null;
-  }
+  // if (authMethod === AuthType.LOGIN_WITH_GOOGLE_PERSONAL) { // Removed
+  //   return null;
+  // }
 
   if (authMethod === AuthType.USE_GEMINI) {
     if (!process.env.GEMINI_API_KEY) {

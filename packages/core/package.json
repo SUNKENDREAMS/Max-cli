@@ -1,7 +1,7 @@
 {
-  "name": "@google/gemini-cli-core",
+  "name": "max-headroom-cli-core",
   "version": "0.1.5",
-  "description": "Gemini CLI Server",
+  "description": "Max Headroom CLI Core",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

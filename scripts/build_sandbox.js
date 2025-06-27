@@ -61,14 +61,16 @@ if (sandboxCommand === 'sandbox-exec') {
 
 console.log(`using ${sandboxCommand} for sandboxing`);
 
-const baseImage = cliPkgJson.config.sandboxImageUri;
+// const baseImage = cliPkgJson.config.sandboxImageUri; // This was removed from package.json
+const baseImage = undefined; // Explicitly undefined, or could be configured via another env var for internal registry
 const customImage = argv.i;
-const baseDockerfile = 'Dockerfile';
+const baseDockerfile = 'Dockerfile'; // This refers to the Dockerfile in the project root
 const customDockerfile = argv.f;
 
-if (!baseImage?.length) {
+if (!baseImage?.length && !customImage && !customDockerfile) { // Adjusted condition
   console.warn(
-    'No default image tag specified in gemini-cli/packages/cli/package.json',
+    'Warning: No base sandbox image URI was found (it was removed as a cloud dependency). ' +
+    'Sandbox will only be built if a custom Dockerfile (-f) and image name (-i) are specified.',
   );
 }
 
@@ -77,23 +79,25 @@ if (!argv.s) {
   execSync('npm run build --workspaces', { stdio: 'inherit' });
 }
 
-console.log('packing @google/gemini-cli ...');
+console.log('packing max-headroom-cli-app ...'); // Renamed
 const cliPackageDir = join('packages', 'cli');
-rmSync(join(cliPackageDir, 'dist', 'google-gemini-cli-*.tgz'), { force: true });
+// Adjust glob to match new package name if npm pack output changes filename format
+rmSync(join(cliPackageDir, 'dist', 'max-headroom-cli-app-*.tgz'), { force: true });
 execSync(
-  `npm pack -w @google/gemini-cli --pack-destination ./packages/cli/dist`,
+  `npm pack -w max-headroom-cli-app --pack-destination ./packages/cli/dist`, // Renamed
   {
     stdio: 'ignore',
   },
 );
 
-console.log('packing @google/gemini-cli-core ...');
+console.log('packing max-headroom-cli-core ...'); // Renamed
 const corePackageDir = join('packages', 'core');
-rmSync(join(corePackageDir, 'dist', 'google-gemini-cli-core-*.tgz'), {
+// Adjust glob to match new package name
+rmSync(join(corePackageDir, 'dist', 'max-headroom-cli-core-*.tgz'), {
   force: true,
 });
 execSync(
-  `npm pack -w @google/gemini-cli-core --pack-destination ./packages/core/dist`,
+  `npm pack -w max-headroom-cli-core --pack-destination ./packages/core/dist`, // Renamed
   { stdio: 'ignore' },
 );
 
@@ -101,12 +105,13 @@ const packageVersion = JSON.parse(
   readFileSync(join(process.cwd(), 'package.json'), 'utf-8'),
 ).version;
 
+// Filenames from npm pack are typically <name>-<version>.tgz
 chmodSync(
-  join(cliPackageDir, 'dist', `google-gemini-cli-${packageVersion}.tgz`),
+  join(cliPackageDir, 'dist', `max-headroom-cli-app-${packageVersion}.tgz`), // Renamed
   0o755,
 );
 chmodSync(
-  join(corePackageDir, 'dist', `google-gemini-cli-core-${packageVersion}.tgz`),
+  join(corePackageDir, 'dist', `max-headroom-cli-core-${packageVersion}.tgz`), // Renamed
   0o755,
 );
 

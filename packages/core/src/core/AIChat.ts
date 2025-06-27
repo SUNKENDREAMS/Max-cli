@@ -18,7 +18,7 @@ import {
 } from '@google/genai';
 import { retryWithBackoff } from '../utils/retry.js';
 import { isFunctionResponse } from '../utils/messageInspectors.js';
-import { ContentGenerator, AuthType } from './contentGenerator.js';
+import { ContentGenerator } from './contentGenerator.js'; // AuthType removed as handleFlashFallback is gone
 import { Config } from '../config/config.js';
 import {
   logApiRequest,
@@ -35,8 +35,7 @@ import {
   ApiResponseEvent,
 } from '../telemetry/types.js';
 import {
-  DEFAULT_GEMINI_FLASH_MODEL,
-  DEFAULT_GEMINI_MODEL,
+  DEFAULT_LOCAL_MODEL, // Using local model default
 } from '../config/models.js';
 
 /**
@@ -133,7 +132,7 @@ function extractCuratedHistory(comprehensiveHistory: Content[]): Content[] {
  * @remarks
  * The session maintains all the turns between user and model.
  */
-export class GeminiChat {
+export class AIChat { // Renamed from GeminiChat
   // A promise to represent the current state of the message being sent to the
   // model.
   private sendPromise: Promise<void> = Promise.resolve();
@@ -195,41 +194,6 @@ export class GeminiChat {
   }
 
   /**
-   * Handles fallback to Flash model when persistent 429 errors occur for OAuth users.
-   * Uses a fallback handler if provided by the config, otherwise returns null.
-   */
-  private async handleFlashFallback(authType?: string): Promise<string | null> {
-    // Only handle fallback for OAuth users
-    if (authType !== AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
-      return null;
-    }
-
-    const currentModel = this.config.getModel();
-    const fallbackModel = DEFAULT_GEMINI_FLASH_MODEL;
-
-    // Don't fallback if already using Flash model
-    if (currentModel === fallbackModel) {
-      return null;
-    }
-
-    // Check if config has a fallback handler (set by CLI package)
-    const fallbackHandler = this.config.flashFallbackHandler;
-    if (typeof fallbackHandler === 'function') {
-      try {
-        const accepted = await fallbackHandler(currentModel, fallbackModel);
-        if (accepted) {
-          this.config.setModel(fallbackModel);
-          return fallbackModel;
-        }
-      } catch (error) {
-        console.warn('Flash fallback handler failed:', error);
-      }
-    }
-
-    return null;
-  }
-
-  /**
    * Sends a message to the model and returns the response.
    *
    * @remarks
@@ -242,7 +206,7 @@ export class GeminiChat {
    *
    * @example
    * ```ts
-   * const chat = ai.chats.create({model: 'gemini-2.0-flash'});
+   * const chat = ai.chats.create({model: 'ollama/mistral'}); // Updated example
    * const response = await chat.sendMessage({
    *   message: 'Why is the sky blue?'
    * });
@@ -264,7 +228,7 @@ export class GeminiChat {
     try {
       const apiCall = () =>
         this.contentGenerator.generateContent({
-          model: this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL,
+          model: this.config.getModel() || DEFAULT_LOCAL_MODEL, // Use local default
           contents: requestContents,
           config: { ...this.generationConfig, ...params.config },
         });
@@ -272,13 +236,12 @@ export class GeminiChat {
       response = await retryWithBackoff(apiCall, {
         shouldRetry: (error: Error) => {
           if (error && error.message) {
-            if (error.message.includes('429')) return true;
-            if (error.message.match(/5\d{2}/)) return true;
+            if (error.message.includes('429')) return true; // Standard rate limit
+            if (error.message.match(/5\d{2}/)) return true; // Server-side errors
           }
           return false;
         },
-        onPersistent429: async (authType?: string) =>
-          await this.handleFlashFallback(authType),
+        // onPersistent429 removed
         authType: this.config.getContentGeneratorConfig()?.authType,
       });
       const durationMs = Date.now() - startTime;
@@ -290,9 +253,6 @@ export class GeminiChat {
 
       this.sendPromise = (async () => {
         const outputContent = response.candidates?.[0]?.content;
-        // Because the AFC input contains the entire curated chat history in
-        // addition to the new user input, we need to truncate the AFC history
-        // to deduplicate the existing chat history.
         const fullAutomaticFunctionCallingHistory =
           response.automaticFunctionCallingHistory;
         const index = this.getHistory(true).length;
@@ -309,7 +269,6 @@ export class GeminiChat {
         );
       })();
       await this.sendPromise.catch(() => {
-        // Resets sendPromise to avoid subsequent calls failing
         this.sendPromise = Promise.resolve();
       });
       return response;
@@ -334,7 +293,7 @@ export class GeminiChat {
    *
    * @example
    * ```ts
-   * const chat = ai.chats.create({model: 'gemini-2.0-flash'});
+   * const chat = ai.chats.create({model: 'ollama/mistral'}); // Updated example
    * const response = await chat.sendMessageStream({
    *   message: 'Why is the sky blue?'
    * });
@@ -350,10 +309,8 @@ export class GeminiChat {
     const userContent = createUserContent(params.message);
     const requestContents = this.getHistory(true).concat(userContent);
 
-    const model = await this._selectModel(
-      requestContents,
-      params.config?.abortSignal ?? new AbortController().signal,
-    );
+    // Simplified model selection for offline-first
+    const model = this.config.getModel() || DEFAULT_LOCAL_MODEL;
 
     this._logApiRequest(requestContents, model);
 
@@ -367,27 +324,18 @@ export class GeminiChat {
           config: { ...this.generationConfig, ...params.config },
         });
 
-      // Note: Retrying streams can be complex. If generateContentStream itself doesn't handle retries
-      // for transient issues internally before yielding the async generator, this retry will re-initiate
-      // the stream. For simple 429/500 errors on initial call, this is fine.
-      // If errors occur mid-stream, this setup won't resume the stream; it will restart it.
       const streamResponse = await retryWithBackoff(apiCall, {
         shouldRetry: (error: Error) => {
-          // Check error messages for status codes, or specific error names if known
           if (error && error.message) {
             if (error.message.includes('429')) return true;
             if (error.message.match(/5\d{2}/)) return true;
           }
-          return false; // Don't retry other errors by default
+          return false;
         },
-        onPersistent429: async (authType?: string) =>
-          await this.handleFlashFallback(authType),
+        // onPersistent429 removed
         authType: this.config.getContentGeneratorConfig()?.authType,
       });
 
-      // Resolve the internal tracking of send completion promise - `sendPromise`
-      // for both success and failure response. The actual failure is still
-      // propagated by the `await streamResponse`.
       this.sendPromise = Promise.resolve(streamResponse)
         .then(() => undefined)
         .catch(() => undefined);
@@ -408,78 +356,15 @@ export class GeminiChat {
 
   /**
    * Selects the model to use for the request.
-   *
-   * This is a placeholder for now.
+   * For Max Headroom (offline focus), this is simplified.
    */
   private async _selectModel(
-    history: Content[],
-    signal: AbortSignal,
+    _history: Content[], // history parameter may not be needed now
+    _signal: AbortSignal, // signal parameter may not be needed now
   ): Promise<string> {
-    const currentModel = this.config.getModel();
-    if (currentModel === DEFAULT_GEMINI_FLASH_MODEL) {
-      return DEFAULT_GEMINI_FLASH_MODEL;
-    }
-
-    if (
-      history.length < 5 &&
-      this.config.getContentGeneratorConfig().authType === AuthType.USE_GEMINI
-    ) {
-      // There's currently a bug where for Gemini API key usage if we try and use flash as one of the first
-      // requests in our sequence that it will return an empty token.
-      return DEFAULT_GEMINI_MODEL;
-    }
-
-    const flashIndicator = 'flash';
-    const proIndicator = 'pro';
-    const modelChoicePrompt = `You are a super-intelligent router that decides which model to use for a given request. You have two models to choose from: "${flashIndicator}" and "${proIndicator}". "${flashIndicator}" is a smaller and faster model that is good for simple or well defined requests. "${proIndicator}" is a larger and slower model that is good for complex or undefined requests.
-
-Based on the user request, which model should be used? Respond with a JSON object that contains a single field, \`model\`, whose value is the name of the model to be used.
-
-For example, if you think "${flashIndicator}" should be used, respond with: { "model": "${flashIndicator}" }`;
-    const modelChoiceContent: Content[] = [
-      {
-        role: 'user',
-        parts: [{ text: modelChoicePrompt }],
-      },
-    ];
-
-    const client = this.config.getGeminiClient();
-    try {
-      const choice = await client.generateJson(
-        [...history, ...modelChoiceContent],
-        {
-          type: 'object',
-          properties: {
-            model: {
-              type: 'string',
-              enum: [flashIndicator, proIndicator],
-            },
-          },
-          required: ['model'],
-        },
-        signal,
-        DEFAULT_GEMINI_FLASH_MODEL,
-        {
-          temperature: 0,
-          maxOutputTokens: 25,
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-      );
-
-      switch (choice.model) {
-        case flashIndicator:
-          return DEFAULT_GEMINI_FLASH_MODEL;
-        case proIndicator:
-          return DEFAULT_GEMINI_MODEL;
-        default:
-          return currentModel;
-      }
-    } catch (_e) {
-      // If the model selection fails, just use the default flash model.
-      return DEFAULT_GEMINI_FLASH_MODEL;
-    }
+    // Simply return the currently configured model, or the local default.
+    // The complex Gemini Pro/Flash selection logic is removed.
+    return this.config.getModel() || DEFAULT_LOCAL_MODEL;
   }
 
   /**
@@ -509,8 +394,6 @@ For example, if you think "${flashIndicator}" should be used, respond with: { "m
     const history = curated
       ? extractCuratedHistory(this.history)
       : this.history;
-    // Deep copy the history to avoid mutating the history outside of the
-    // chat session.
     return structuredClone(history);
   }
 
@@ -614,7 +497,6 @@ For example, if you think "${flashIndicator}" should be used, respond with: { "m
     } else {
       // When not a function response appends an empty content when model returns empty response, so that the
       // history is always alternating between user and model.
-      // Workaround for: https://b.corp.google.com/issues/420354090
       if (!isFunctionResponse(userInput)) {
         outputContents.push({
           role: 'model',
@@ -633,7 +515,6 @@ For example, if you think "${flashIndicator}" should be used, respond with: { "m
       this.history.push(userInput);
     }
 
-    // Consolidate adjacent model roles in outputContents
     const consolidatedOutputContents: Content[] = [];
     for (const content of outputContents) {
       if (this.isThoughtContent(content)) {
@@ -642,8 +523,6 @@ For example, if you think "${flashIndicator}" should be used, respond with: { "m
       const lastContent =
         consolidatedOutputContents[consolidatedOutputContents.length - 1];
       if (this.isTextContent(lastContent) && this.isTextContent(content)) {
-        // If both current and last are text, combine their text into the lastContent's first part
-        // and append any other parts from the current content.
         lastContent.parts[0].text += content.parts[0].text || '';
         if (content.parts.length > 1) {
           lastContent.parts.push(...content.parts.slice(1));
@@ -664,8 +543,6 @@ For example, if you think "${flashIndicator}" should be used, respond with: { "m
         this.isTextContent(lastHistoryEntry) &&
         this.isTextContent(consolidatedOutputContents[0])
       ) {
-        // If both current and last are text, combine their text into the lastHistoryEntry's first part
-        // and append any other parts from the current content.
         lastHistoryEntry.parts[0].text +=
           consolidatedOutputContents[0].parts[0].text || '';
         if (consolidatedOutputContents[0].parts.length > 1) {
@@ -673,7 +550,7 @@ For example, if you think "${flashIndicator}" should be used, respond with: { "m
             ...consolidatedOutputContents[0].parts.slice(1),
           );
         }
-        consolidatedOutputContents.shift(); // Remove the first element as it's merged
+        consolidatedOutputContents.shift();
       }
       this.history.push(...consolidatedOutputContents);
     }

@@ -4,16 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AuthType, StructuredError } from '@google/gemini-cli-core';
+import { AuthType, StructuredError } from 'max-headroom-cli-core'; // Renamed
 
-const RATE_LIMIT_ERROR_MESSAGE_GOOGLE =
-  '\nPlease wait and try again later. To increase your limits, upgrade to a plan with higher limits, or use /auth to switch to using a paid API key from AI Studio at https://aistudio.google.com/apikey';
-const RATE_LIMIT_ERROR_MESSAGE_USE_GEMINI =
-  '\nPlease wait and try again later. To increase your limits, request a quota increase through AI Studio, or switch to another /auth method';
-const RATE_LIMIT_ERROR_MESSAGE_VERTEX =
-  '\nPlease wait and try again later. To increase your limits, request a quota increase through Vertex, or switch to another /auth method';
+// Cloud-specific rate limit messages are less relevant for an offline-first tool.
+// Kept for optional cloud use, but Ollama would use the default.
+const RATE_LIMIT_ERROR_MESSAGE_GOOGLE_SERVICES =
+  '\nThe AI service has indicated a rate limit. Please wait and try again. If using a Google Cloud service, check your quotas. For personal Google accounts, usage limits apply.';
+const RATE_LIMIT_ERROR_MESSAGE_OLLAMA = // New message for Ollama
+  '\nThe local Ollama service returned a rate limit error (e.g., 429). This might be due to a proxy or if the Ollama server itself has concurrent request limits. Please check your Ollama server logs and configuration.';
 const RATE_LIMIT_ERROR_MESSAGE_DEFAULT =
-  'Your request has been rate limited. Please wait and try again later.';
+  'Your request has been rate limited by the AI service. Please wait and try again later.';
 
 export interface ApiError {
   error: {
@@ -46,11 +46,11 @@ function isStructuredError(error: unknown): error is StructuredError {
 function getRateLimitMessage(authType?: AuthType): string {
   switch (authType) {
     case AuthType.LOGIN_WITH_GOOGLE_PERSONAL:
-      return RATE_LIMIT_ERROR_MESSAGE_GOOGLE;
     case AuthType.USE_GEMINI:
-      return RATE_LIMIT_ERROR_MESSAGE_USE_GEMINI;
     case AuthType.USE_VERTEX_AI:
-      return RATE_LIMIT_ERROR_MESSAGE_VERTEX;
+      return RATE_LIMIT_ERROR_MESSAGE_GOOGLE_SERVICES; // Consolidated message
+    case AuthType.OLLAMA:
+      return RATE_LIMIT_ERROR_MESSAGE_OLLAMA;
     default:
       return RATE_LIMIT_ERROR_MESSAGE_DEFAULT;
   }
@@ -60,8 +60,11 @@ export function parseAndFormatApiError(
   error: unknown,
   authType?: AuthType,
 ): string {
+  const errorPrefix = '[AI Service Error: '; // Changed prefix
+  const unknownErrorMsg = `${errorPrefix}An unknown error occurred.]`;
+
   if (isStructuredError(error)) {
-    let text = `[API Error: ${error.message}]`;
+    let text = `${errorPrefix}${error.message}]`;
     if (error.status === 429) {
       text += getRateLimitMessage(authType);
     }
@@ -72,7 +75,7 @@ export function parseAndFormatApiError(
   if (typeof error === 'string') {
     const jsonStart = error.indexOf('{');
     if (jsonStart === -1) {
-      return `[API Error: ${error}]`; // Not a JSON error, return as is.
+      return `${errorPrefix}${error}]`; // Not a JSON error, return as is.
     }
 
     const jsonString = error.substring(jsonStart);
@@ -90,7 +93,7 @@ export function parseAndFormatApiError(
         } catch (_e) {
           // It's not a nested JSON error, so we just use the message as is.
         }
-        let text = `[API Error: ${finalMessage} (Status: ${parsedError.error.status})]`;
+        let text = `${errorPrefix}${finalMessage} (Status: ${parsedError.error.status})]`;
         if (parsedError.error.code === 429) {
           text += getRateLimitMessage(authType);
         }
@@ -99,8 +102,8 @@ export function parseAndFormatApiError(
     } catch (_e) {
       // Not a valid JSON, fall through and return the original message.
     }
-    return `[API Error: ${error}]`;
+    return `${errorPrefix}${error}]`;
   }
 
-  return '[API Error: An unknown error occurred.]';
+  return unknownErrorMsg;
 }

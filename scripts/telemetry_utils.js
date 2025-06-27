@@ -23,29 +23,29 @@ const projectHash = crypto
   .update(projectRoot)
   .digest('hex');
 
-// User-level .gemini directory in home
-const USER_GEMINI_DIR = path.join(os.homedir(), '.gemini');
-// Project-level .gemini directory in the workspace
-const WORKSPACE_GEMINI_DIR = path.join(projectRoot, '.gemini');
+// User-level .max_headroom directory in home
+const USER_MAX_HEADROOM_DIR = path.join(os.homedir(), '.max_headroom'); // Renamed
+// Project-level .max_headroom directory in the workspace
+const WORKSPACE_MAX_HEADROOM_DIR = path.join(projectRoot, '.max_headroom'); // Renamed
 
-// Telemetry artifacts are stored in a hashed directory under the user's ~/.gemini/tmp
-export const OTEL_DIR = path.join(USER_GEMINI_DIR, 'tmp', projectHash, 'otel');
+// Telemetry artifacts are stored in a hashed directory under the user's ~/.max_headroom/tmp
+export const OTEL_DIR = path.join(USER_MAX_HEADROOM_DIR, 'tmp', projectHash, 'otel'); // Updated base
 export const BIN_DIR = path.join(OTEL_DIR, 'bin');
 
-// Workspace settings remain in the project's .gemini directory
+// Workspace settings remain in the project's .max_headroom directory
 export const WORKSPACE_SETTINGS_FILE = path.join(
-  WORKSPACE_GEMINI_DIR,
+  WORKSPACE_MAX_HEADROOM_DIR, // Renamed
   'settings.json',
 );
 
 export function getJson(url) {
   const tmpFile = path.join(
     os.tmpdir(),
-    `gemini-cli-releases-${Date.now()}.json`,
+    `max-headroom-cli-releases-${Date.now()}.json`, // Renamed
   );
   try {
     execSync(
-      `curl -sL -H "User-Agent: gemini-cli-dev-script" -o "${tmpFile}" "${url}"`,
+      `curl -sL -H "User-Agent: max-headroom-cli-dev-script" -o "${tmpFile}" "${url}"`, // Renamed User-Agent
       { stdio: 'pipe' },
     );
     const content = fs.readFileSync(tmpFile, 'utf-8');
@@ -146,6 +146,10 @@ export async function ensureBinary(
     return executablePath;
   }
 
+  console.warn(`\n⚠️ ATTENTION: Attempting to download ${executableName} from GitHub (${repo}).`);
+  console.warn(`   For use in the APEN (offline) environment, this binary should be pre-packaged`);
+  console.warn(`   or made available from an internal artifact repository. This download will fail`);
+  console.warn(`   if GitHub is not accessible.\n`);
   console.log(`🔍 ${executableName} not found. Downloading from ${repo}...`);
 
   const platform = process.platform === 'win32' ? 'windows' : process.platform;
@@ -217,7 +221,7 @@ export async function ensureBinary(
 
   const downloadUrl = asset.browser_download_url;
   const tmpDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'gemini-cli-telemetry-'),
+    path.join(os.tmpdir(), 'max-headroom-cli-telemetry-'), // Renamed
   );
   const archivePath = path.join(tmpDir, asset.name);
 

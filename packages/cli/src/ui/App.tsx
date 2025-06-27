@@ -18,7 +18,7 @@ import {
 } from 'ink';
 import { StreamingState, type HistoryItem, MessageType } from './types.js';
 import { useTerminalSize } from './hooks/useTerminalSize.js';
-import { useGeminiStream } from './hooks/useGeminiStream.js';
+import { useAIStream } from './hooks/useAIStream.js';
 import { useLoadingIndicator } from './hooks/useLoadingIndicator.js';
 import { useThemeCommand } from './hooks/useThemeCommand.js';
 import { useAuthCommand } from './hooks/useAuthCommand.js';
@@ -38,7 +38,7 @@ import { AuthInProgress } from './components/AuthInProgress.js';
 import { EditorSettingsDialog } from './components/EditorSettingsDialog.js';
 import { Colors } from './colors.js';
 import { Help } from './components/Help.js';
-import { loadHierarchicalGeminiMemory } from '../config/config.js';
+import { loadHierarchicalMemory } from '../config/config.js'; // Will rename in source later
 import { LoadedSettings } from '../config/settings.js';
 import { Tips } from './components/Tips.js';
 import { useConsolePatcher } from './components/ConsolePatcher.js';
@@ -50,11 +50,11 @@ import process from 'node:process';
 import {
   getErrorMessage,
   type Config,
-  getAllGeminiMdFilenames,
+  getAllMaxHeadroomMdFilenames,
   ApprovalMode,
   isEditorAvailable,
   EditorType,
-} from '@google/gemini-cli-core';
+} from 'max-headroom-cli-core';
 import { validateAuthMethod } from '../config/auth.js';
 import { useLogger } from './hooks/useLogger.js';
 import { StreamingContext } from './contexts/StreamingContext.js';
@@ -107,7 +107,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     setStaticKey((prev) => prev + 1);
   }, [setStaticKey, stdout]);
 
-  const [geminiMdFileCount, setGeminiMdFileCount] = useState<number>(0);
+  const [contextFileCount, setContextFileCount] = useState<number>(0);
   const [debugMessage, setDebugMessage] = useState<string>('');
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [themeError, setThemeError] = useState<string | null>(null);
@@ -175,7 +175,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     addItem(
       {
         type: MessageType.INFO,
-        text: 'Refreshing hierarchical memory (GEMINI.md or other context files)...',
+        text: 'Refreshing hierarchical memory (MAX_HEADROOM.md or other context files)...',
       },
       Date.now(),
     );
@@ -187,13 +187,13 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
         config.getExtensionContextFilePaths(),
       );
       config.setUserMemory(memoryContent);
-      config.setGeminiMdFileCount(fileCount);
-      setGeminiMdFileCount(fileCount);
+      config.setContextFileCount(fileCount); // Renamed from setGeminiMdFileCount
+      setContextFileCount(fileCount); // Renamed from setGeminiMdFileCount
 
       addItem(
         {
           type: MessageType.INFO,
-          text: `Memory refreshed successfully. ${memoryContent.length > 0 ? `Loaded ${memoryContent.length} characters from ${fileCount} file(s).` : 'No memory content found.'}`,
+          text: `Memory refreshed successfully. ${memoryContent.length > 0 ? `Loaded ${memoryContent.length} characters from ${fileCount} context file(s).` : 'No memory content found.'}`,
         },
         Date.now(),
       );
@@ -213,9 +213,9 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
       );
       console.error('Error refreshing memory:', error);
     }
-  }, [config, addItem]);
+  }, [config, addItem, setContextFileCount]); // Added setContextFileCount to dependencies
 
-  // Watch for model changes (e.g., from Flash fallback)
+  // Watch for model changes
   useEffect(() => {
     const checkModelChange = () => {
       const configModel = config.getModel();
@@ -232,26 +232,27 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   }, [config, currentModel]);
 
   // Set up Flash fallback handler
-  useEffect(() => {
-    const flashFallbackHandler = async (
-      currentModel: string,
-      fallbackModel: string,
-    ): Promise<boolean> => {
-      // Add message to UI history
-      addItem(
-        {
-          type: MessageType.INFO,
-          text: `⚡ Slow response times detected. Automatically switching from ${currentModel} to ${fallbackModel} for faster responses for the remainder of this session.
-⚡ To avoid this you can utilize a Gemini API Key. See: https://goo.gle/gemini-cli-docs-auth#gemini-api-key
-⚡ You can switch authentication methods by typing /auth`,
-        },
-        Date.now(),
-      );
-      return true; // Always accept the fallback
-    };
+  // Removed as it's specific to Google Gemini models and not relevant for offline-first Max Headroom
+  // useEffect(() => {
+  //   const flashFallbackHandler = async (
+  //     currentModel: string,
+  //     fallbackModel: string,
+  //   ): Promise<boolean> => {
+  //     // Add message to UI history
+  //     addItem(
+  //       {
+  //         type: MessageType.INFO,
+  //         text: `⚡ Slow response times detected. Automatically switching from ${currentModel} to ${fallbackModel} for faster responses for the remainder of this session.
+// ⚡ To avoid this you can utilize a Gemini API Key. See: https://goo.gle/gemini-cli-docs-auth#gemini-api-key
+// ⚡ You can switch authentication methods by typing /auth`,
+  //       },
+  //       Date.now(),
+  //     );
+  //     return true; // Always accept the fallback
+  //   };
 
-    config.setFlashFallbackHandler(flashFallbackHandler);
-  }, [config, addItem]);
+  //   config.setFlashFallbackHandler(flashFallbackHandler);
+  // }, [config, addItem]);
 
   const {
     handleSlashCommand,
@@ -385,9 +386,9 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
 
   useEffect(() => {
     if (config) {
-      setGeminiMdFileCount(config.getGeminiMdFileCount());
+      setContextFileCount(config.getContextFileCount());
     }
-  }, [config]);
+  }, [config, setContextFileCount]); // Added setContextFileCount to dependencies
 
   const getPreferredEditor = useCallback(() => {
     const editorType = settings.merged.preferredEditor;
@@ -408,10 +409,10 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     streamingState,
     submitQuery,
     initError,
-    pendingHistoryItems: pendingGeminiHistoryItems,
+    pendingHistoryItems: pendingAIHistoryItems,
     thought,
-  } = useGeminiStream(
-    config.getGeminiClient(),
+  } = useAIStream(
+    config.getAIClient(), // Renamed from getGeminiClient
     history,
     addItem,
     setShowHelp,
@@ -423,7 +424,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     onAuthError,
     performMemoryRefresh,
   );
-  pendingHistoryItems.push(...pendingGeminiHistoryItems);
+  pendingHistoryItems.push(...pendingAIHistoryItems);
   const { elapsedTime, currentLoadingPhrase } =
     useLoadingIndicator(streamingState);
   const showAutoAcceptIndicator = useAutoAcceptIndicator({ config });
@@ -732,7 +733,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
                 width="100%"
               >
                 <Box>
-                  {process.env.GEMINI_SYSTEM_MD && (
+                  {process.env.MAX_HEADROOM_SYSTEM_MD && ( // Renamed env var
                     <Text color={Colors.AccentRed}>|⌐■_■| </Text>
                   )}
                   {ctrlCPressedOnce ? (
@@ -745,7 +746,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
                     </Text>
                   ) : (
                     <ContextSummaryDisplay
-                      geminiMdFileCount={geminiMdFileCount}
+                      contextFileCount={contextFileCount}
                       contextFileNames={contextFileNames}
                       mcpServers={config.getMcpServers()}
                       showToolDescriptions={showToolDescriptions}

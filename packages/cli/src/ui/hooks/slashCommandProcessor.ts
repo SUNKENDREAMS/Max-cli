@@ -18,7 +18,7 @@ import {
   MCPServerStatus,
   getMCPDiscoveryState,
   getMCPServerStatus,
-} from '@google/gemini-cli-core';
+} from 'max-headroom-cli-core';
 import { useSessionStats } from '../contexts/SessionContext.js';
 import {
   Message,
@@ -193,7 +193,7 @@ export const useSlashCommandProcessor = (
       {
         name: 'help',
         altName: '?',
-        description: 'for help on gemini-cli',
+        description: 'for help on max-headroom-cli',
         action: (_mainCommand, _subCommand, _args) => {
           onDebugMessage('Opening help.');
           setShowHelp(true);
@@ -201,23 +201,16 @@ export const useSlashCommandProcessor = (
       },
       {
         name: 'docs',
-        description: 'open full Gemini CLI documentation in your browser',
+        description: 'open full Max Headroom documentation in your browser (if available)',
         action: async (_mainCommand, _subCommand, _args) => {
-          const docsUrl = 'https://goo.gle/gemini-cli-docs';
-          if (process.env.SANDBOX && process.env.SANDBOX !== 'sandbox-exec') {
-            addMessage({
-              type: MessageType.INFO,
-              content: `Please open the following URL in your browser to view the documentation:\n${docsUrl}`,
-              timestamp: new Date(),
-            });
-          } else {
-            addMessage({
-              type: MessageType.INFO,
-              content: `Opening documentation in your browser: ${docsUrl}`,
-              timestamp: new Date(),
-            });
-            await open(docsUrl);
-          }
+          // const docsUrl = 'https://goo.gle/gemini-cli-docs'; // Original URL
+          addMessage({
+            type: MessageType.INFO,
+            content: `To view documentation, please refer to the locally provided docs or your internal documentation for Max Headroom. (The original online docs URL was for a different CLI).`,
+            timestamp: new Date(),
+          });
+          // Intentionally not calling open() as it's for an offline environment.
+          // If local docs can be opened via a command, that logic could be added here.
         },
       },
       {
@@ -308,21 +301,12 @@ export const useSlashCommandProcessor = (
           const serverNames = Object.keys(mcpServers);
 
           if (serverNames.length === 0) {
-            const docsUrl = 'https://goo.gle/gemini-cli-docs-mcp';
-            if (process.env.SANDBOX && process.env.SANDBOX !== 'sandbox-exec') {
-              addMessage({
-                type: MessageType.INFO,
-                content: `No MCP servers configured. Please open the following URL in your browser to view documentation:\n${docsUrl}`,
-                timestamp: new Date(),
-              });
-            } else {
-              addMessage({
-                type: MessageType.INFO,
-                content: `No MCP servers configured. Opening documentation in your browser: ${docsUrl}`,
-                timestamp: new Date(),
-              });
-              await open(docsUrl);
-            }
+            // const docsUrl = 'https://goo.gle/gemini-cli-docs-mcp'; // Original URL
+            addMessage({
+              type: MessageType.INFO,
+              content: `No MCP servers configured. Refer to Max Headroom documentation for setting up local/internal MCP servers.`,
+              timestamp: new Date(),
+            });
             return;
           }
 
@@ -495,7 +479,7 @@ export const useSlashCommandProcessor = (
       },
       {
         name: 'tools',
-        description: 'list available Gemini CLI tools',
+        description: 'list available Max Headroom tools',
         action: async (_mainCommand, _subCommand, _args) => {
           // Check if the _subCommand includes a specific flag to control description visibility
           let useShowDescriptions = showToolDescriptions;
@@ -524,12 +508,12 @@ export const useSlashCommandProcessor = (
           }
 
           // Filter out MCP tools by checking if they have a serverName property
-          const geminiTools = tools.filter((tool) => !('serverName' in tool));
+          const cliTools = tools.filter((tool) => !('serverName' in tool));
 
-          let message = 'Available Gemini CLI tools:\n\n';
+          let message = 'Available Max Headroom tools:\n\n';
 
-          if (geminiTools.length > 0) {
-            geminiTools.forEach((tool) => {
+          if (cliTools.length > 0) {
+            cliTools.forEach((tool) => {
               if (useShowDescriptions && tool.description) {
                 // Format tool name in cyan using simple ANSI cyan color
                 message += `  - \u001b[36m${tool.displayName} (${tool.name})\u001b[0m:\n`;
@@ -630,34 +614,40 @@ export const useSlashCommandProcessor = (
 *   **Memory Usage:** ${memoryUsage}
 `;
 
-          let bugReportUrl =
-            'https://github.com/google-gemini/gemini-cli/issues/new?template=bug_report.yml&title={title}&info={info}';
+          let bugReportUrl = ''; // Default to empty for offline
           const bugCommand = config?.getBugCommand();
-          if (bugCommand?.urlTemplate) {
-            bugReportUrl = bugCommand.urlTemplate;
+          if (bugCommand?.urlTemplate && bugCommand.urlTemplate.trim() !== '') {
+            bugReportUrl = bugCommand.urlTemplate
+              .replace('{title}', encodeURIComponent(bugDescription))
+              .replace('{info}', encodeURIComponent(info));
           }
-          bugReportUrl = bugReportUrl
-            .replace('{title}', encodeURIComponent(bugDescription))
-            .replace('{info}', encodeURIComponent(info));
 
-          addMessage({
-            type: MessageType.INFO,
-            content: `To submit your bug report, please open the following URL in your browser:\n${bugReportUrl}`,
-            timestamp: new Date(),
-          });
-          (async () => {
-            try {
-              await open(bugReportUrl);
-            } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              addMessage({
-                type: MessageType.ERROR,
-                content: `Could not open URL in browser: ${errorMessage}`,
-                timestamp: new Date(),
-              });
-            }
-          })();
+          if (bugReportUrl) {
+            addMessage({
+              type: MessageType.INFO,
+              content: `To submit your bug report, please open the following URL in your browser (if accessible):\n${bugReportUrl}`,
+              timestamp: new Date(),
+            });
+            (async () => {
+              try {
+                await open(bugReportUrl);
+              } catch (error) {
+                const errorMessage =
+                  error instanceof Error ? error.message : String(error);
+                addMessage({
+                  type: MessageType.ERROR,
+                  content: `Could not open URL in browser: ${errorMessage}. Please copy the URL manually.`,
+                  timestamp: new Date(),
+                });
+              }
+            })();
+          } else {
+            addMessage({
+              type: MessageType.INFO,
+              content: `Bug reporting URL is not configured. Please report issues through your internal channels. Debug info:\n${info}\nDescription: ${bugDescription}`,
+              timestamp: new Date(),
+            });
+          }
         },
       },
       {
@@ -884,7 +874,7 @@ export const useSlashCommandProcessor = (
           if (!checkpointDir) {
             addMessage({
               type: MessageType.ERROR,
-              content: 'Could not determine the .gemini directory path.',
+              content: 'Could not determine the .max_headroom directory path.',
               timestamp: new Date(),
             });
             return;

@@ -8,7 +8,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import Gradient from 'ink-gradient';
 import { Colors } from '../colors.js';
-import { shortAsciiLogo, longAsciiLogo } from './AsciiArt.js';
+import { shortMaxHeadroomAsciiLogo, longMaxHeadroomAsciiLogo } from './AsciiArt.js'; // Renamed imports
 import { getAsciiArtWidth } from '../utils/textUtils.js';
 
 interface HeaderProps {
@@ -21,13 +21,13 @@ export const Header: React.FC<HeaderProps> = ({
   terminalWidth,
 }) => {
   let displayTitle;
-  const widthOfLongLogo = getAsciiArtWidth(longAsciiLogo);
+  const widthOfLongLogo = getAsciiArtWidth(longMaxHeadroomAsciiLogo); // Renamed variable
 
   if (customAsciiArt) {
     displayTitle = customAsciiArt;
   } else {
     displayTitle =
-      terminalWidth >= widthOfLongLogo ? longAsciiLogo : shortAsciiLogo;
+      terminalWidth >= widthOfLongLogo ? longMaxHeadroomAsciiLogo : shortMaxHeadroomAsciiLogo; // Renamed variables
   }
 
   const artWidth = getAsciiArtWidth(displayTitle);

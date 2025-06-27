@@ -9,7 +9,7 @@ import { Box, Text, useInput } from 'ink';
 import { Colors } from '../colors.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
 import { LoadedSettings, SettingScope } from '../../config/settings.js';
-import { AuthType } from '@google/gemini-cli-core';
+import { AuthType } from 'max-headroom-cli-core'; // Updated import
 import { validateAuthMethod } from '../../config/auth.js';
 
 interface AuthDialogProps {
@@ -29,12 +29,13 @@ export function AuthDialog({
     initialErrorMessage || null,
   );
   const items = [
-    {
-      label: 'Login with Google',
-      value: AuthType.LOGIN_WITH_GOOGLE_PERSONAL,
-    },
-    { label: 'Gemini API Key', value: AuthType.USE_GEMINI },
-    { label: 'Vertex AI', value: AuthType.USE_VERTEX_AI },
+    // { // Removed LOGIN_WITH_GOOGLE_PERSONAL
+    //   label: 'Login with Google',
+    //   value: AuthType.LOGIN_WITH_GOOGLE_PERSONAL,
+    // },
+    { label: 'Gemini API Key (Optional Cloud)', value: AuthType.USE_GEMINI },
+    { label: 'Vertex AI (Optional Cloud)', value: AuthType.USE_VERTEX_AI },
+    { label: 'Ollama (Local)', value: AuthType.OLLAMA },
   ];
 
   let initialAuthIndex = items.findIndex(
@@ -76,7 +77,7 @@ export function AuthDialog({
       padding={1}
       width="100%"
     >
-      <Text bold>Select Auth Method</Text>
+      <Text bold>Select Auth Method for Max Headroom</Text>
       <RadioButtonSelect
         items={items}
         initialIndex={initialAuthIndex}
@@ -93,13 +94,11 @@ export function AuthDialog({
         <Text color={Colors.Gray}>(Use Enter to select)</Text>
       </Box>
       <Box marginTop={1}>
-        <Text>Terms of Services and Privacy Notice for Gemini CLI</Text>
+        <Text>Review Terms of Service and Privacy Notice in documentation.</Text>
       </Box>
       <Box marginTop={1}>
         <Text color={Colors.AccentBlue}>
-          {
-            'https://github.com/google-gemini/gemini-cli/blob/main/docs/tos-privacy.md'
-          }
+          (Refer to local/internal documentation for Max Headroom policies)
         </Text>
       </Box>
     </Box>

@@ -11,8 +11,8 @@ export interface RetryOptions {
   initialDelayMs: number;
   maxDelayMs: number;
   shouldRetry: (error: Error) => boolean;
-  onPersistent429?: (authType?: string) => Promise<string | null>;
-  authType?: string;
+  // onPersistent429?: (authType?: string) => Promise<string | null>; // Removed
+  // authType?: string; // Removed as no longer used by current retry logic
 }
 
 const DEFAULT_RETRY_OPTIONS: RetryOptions = {
@@ -20,6 +20,7 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
   initialDelayMs: 5000,
   maxDelayMs: 30000, // 30 seconds
   shouldRetry: defaultShouldRetry,
+  // authType: undefined, // No longer part of options
 };
 
 /**
@@ -67,8 +68,8 @@ export async function retryWithBackoff<T>(
     maxAttempts,
     initialDelayMs,
     maxDelayMs,
-    onPersistent429,
-    authType,
+    // onPersistent429, // Removed
+    // authType, // Removed
     shouldRetry,
   } = {
     ...DEFAULT_RETRY_OPTIONS,
@@ -77,43 +78,16 @@ export async function retryWithBackoff<T>(
 
   let attempt = 0;
   let currentDelay = initialDelayMs;
-  let consecutive429Count = 0;
+  // let consecutive429Count = 0; // Removed as flash fallback logic is removed
 
   while (attempt < maxAttempts) {
     attempt++;
     try {
       return await fn();
     } catch (error) {
-      const errorStatus = getErrorStatus(error);
+      // const errorStatus = getErrorStatus(error); // Not currently used without advanced 429 handling
 
-      // Track consecutive 429 errors
-      if (errorStatus === 429) {
-        consecutive429Count++;
-      } else {
-        consecutive429Count = 0;
-      }
-
-      // If we have persistent 429s and a fallback callback for OAuth
-      if (
-        consecutive429Count >= 2 &&
-        onPersistent429 &&
-        authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL
-      ) {
-        try {
-          const fallbackModel = await onPersistent429(authType);
-          if (fallbackModel) {
-            // Reset attempt counter and try with new model
-            attempt = 0;
-            consecutive429Count = 0;
-            currentDelay = initialDelayMs;
-            // With the model updated, we continue to the next attempt
-            continue;
-          }
-        } catch (fallbackError) {
-          // If fallback fails, continue with original error
-          console.warn('Fallback to Flash model failed:', fallbackError);
-        }
-      }
+      // Removed logic for consecutive429Count and onPersistent429 callback
 
       // Check if we've exhausted retries or shouldn't retry
       if (attempt >= maxAttempts || !shouldRetry(error as Error)) {

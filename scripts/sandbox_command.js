@@ -32,27 +32,27 @@ const argv = yargs(hideBin(process.argv)).option('q', {
   default: false,
 }).argv;
 
-let geminiSandbox = process.env.GEMINI_SANDBOX;
+let maxHeadroomSandbox = process.env.MAX_HEADROOM_SANDBOX; // Renamed
 
-if (!geminiSandbox) {
-  const userSettingsFile = join(os.homedir(), '.gemini', 'settings.json');
+if (!maxHeadroomSandbox) {
+  const userSettingsFile = join(os.homedir(), '.max_headroom', 'settings.json'); // Renamed
   if (existsSync(userSettingsFile)) {
     const settings = JSON.parse(
       stripJsonComments(readFileSync(userSettingsFile, 'utf-8')),
     );
     if (settings.sandbox) {
-      geminiSandbox = settings.sandbox;
+      maxHeadroomSandbox = settings.sandbox;
     }
   }
 }
 
-if (!geminiSandbox) {
+if (!maxHeadroomSandbox) {
   let currentDir = process.cwd();
   while (currentDir !== '/') {
-    const geminiEnv = join(currentDir, '.gemini', '.env');
+    const maxHeadroomEnv = join(currentDir, '.max_headroom', '.env'); // Renamed
     const regularEnv = join(currentDir, '.env');
-    if (existsSync(geminiEnv)) {
-      dotenv.config({ path: geminiEnv });
+    if (existsSync(maxHeadroomEnv)) {
+      dotenv.config({ path: maxHeadroomEnv });
       break;
     } else if (existsSync(regularEnv)) {
       dotenv.config({ path: regularEnv });
@@ -60,10 +60,10 @@ if (!geminiSandbox) {
     }
     currentDir = dirname(currentDir);
   }
-  geminiSandbox = process.env.GEMINI_SANDBOX;
+  maxHeadroomSandbox = process.env.MAX_HEADROOM_SANDBOX; // Renamed
 }
 
-geminiSandbox = (geminiSandbox || '').toLowerCase();
+maxHeadroomSandbox = (maxHeadroomSandbox || '').toLowerCase(); // Renamed
 
 const commandExists = (cmd) => {
   const checkCommand = os.platform() === 'win32' ? 'where' : 'command -v';
@@ -84,23 +84,23 @@ const commandExists = (cmd) => {
 };
 
 let command = '';
-if (['1', 'true'].includes(geminiSandbox)) {
+if (['1', 'true'].includes(maxHeadroomSandbox)) { // Renamed
   if (commandExists('docker')) {
     command = 'docker';
   } else if (commandExists('podman')) {
     command = 'podman';
   } else {
     console.error(
-      'ERROR: install docker or podman or specify command in GEMINI_SANDBOX',
+      'ERROR: install docker or podman or specify command in MAX_HEADROOM_SANDBOX', // Renamed
     );
     process.exit(1);
   }
-} else if (geminiSandbox && !['0', 'false'].includes(geminiSandbox)) {
-  if (commandExists(geminiSandbox)) {
-    command = geminiSandbox;
+} else if (maxHeadroomSandbox && !['0', 'false'].includes(maxHeadroomSandbox)) { // Renamed
+  if (commandExists(maxHeadroomSandbox)) { // Renamed
+    command = maxHeadroomSandbox; // Renamed
   } else {
     console.error(
-      `ERROR: missing sandbox command '${geminiSandbox}' (from GEMINI_SANDBOX)`,
+      `ERROR: missing sandbox command '${maxHeadroomSandbox}' (from MAX_HEADROOM_SANDBOX)`, // Renamed
     );
     process.exit(1);
   }

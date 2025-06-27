@@ -37,16 +37,18 @@ import {
   createContentGenerator,
 } from './contentGenerator.js';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
-import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
+// import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js'; // Removed
 import { AuthType } from './contentGenerator.js';
 
 function isThinkingSupported(model: string) {
+  // This might need adjustment depending on what models are supported by local providers
+  // For now, let's assume local models don't have this specific "thinking" feature in the same way
   if (model.startsWith('gemini-2.5')) return true;
   return false;
 }
 
-export class GeminiClient {
-  private chat?: GeminiChat;
+export class AIClient { // Renamed from GeminiClient
+  private chat?: GeminiChat; // This might also need to become more generic if chat implementation differs
   private contentGenerator?: ContentGenerator;
   private model: string;
   private embeddingModel: string;
@@ -252,7 +254,7 @@ export class GeminiClient {
     contents: Content[],
     schema: SchemaUnion,
     abortSignal: AbortSignal,
-    model: string = DEFAULT_GEMINI_FLASH_MODEL,
+    model?: string, // Model is now optional, or could default to this.model or a local default
     config: GenerateContentConfig = {},
   ): Promise<Record<string, unknown>> {
     try {
@@ -264,9 +266,11 @@ export class GeminiClient {
         ...config,
       };
 
+      const modelToUse = model || this.model; // Use provided model or the client's current model
+
       const apiCall = () =>
         this.getContentGenerator().generateContent({
-          model,
+          model: modelToUse,
           config: {
             ...requestConfig,
             systemInstruction,
@@ -276,10 +280,9 @@ export class GeminiClient {
           contents,
         });
 
+      // Removed onPersistent429: await this.handleFlashFallback(authType) as it's cloud-specific
       const result = await retryWithBackoff(apiCall, {
-        onPersistent429: async (authType?: string) =>
-          await this.handleFlashFallback(authType),
-        authType: this.config.getContentGeneratorConfig()?.authType,
+         authType: this.config.getContentGeneratorConfig()?.authType,
       });
 
       const text = getResponseText(result);
@@ -498,39 +501,5 @@ export class GeminiClient {
       : null;
   }
 
-  /**
-   * Handles fallback to Flash model when persistent 429 errors occur for OAuth users.
-   * Uses a fallback handler if provided by the config, otherwise returns null.
-   */
-  private async handleFlashFallback(authType?: string): Promise<string | null> {
-    // Only handle fallback for OAuth users
-    if (authType !== AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
-      return null;
-    }
-
-    const currentModel = this.model;
-    const fallbackModel = DEFAULT_GEMINI_FLASH_MODEL;
-
-    // Don't fallback if already using Flash model
-    if (currentModel === fallbackModel) {
-      return null;
-    }
-
-    // Check if config has a fallback handler (set by CLI package)
-    const fallbackHandler = this.config.flashFallbackHandler;
-    if (typeof fallbackHandler === 'function') {
-      try {
-        const accepted = await fallbackHandler(currentModel, fallbackModel);
-        if (accepted) {
-          this.config.setModel(fallbackModel);
-          this.model = fallbackModel;
-          return fallbackModel;
-        }
-      } catch (error) {
-        console.warn('Flash fallback handler failed:', error);
-      }
-    }
-
-    return null;
-  }
+  // Removed handleFlashFallback method as it's cloud-specific
 }

@@ -1,25 +1,25 @@
-# Makefile for gemini-cli
+# Makefile for Max Headroom CLI
 
 .PHONY: help install build build-sandbox build-all test lint format preflight clean start debug release run-npx create-alias
 
 help:
-	@echo "Makefile for gemini-cli"
+	@echo "Makefile for Max Headroom CLI"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make install          - Install npm dependencies"
 	@echo "  make build            - Build the entire project"
-	@echo "  make build-sandbox    - Build the sandbox container"
-	@echo "  make build-all        - Build the project and the sandbox"
+	@echo "  make build-sandbox    - Build the sandbox container (if used locally)"
+	@echo "  make build-all        - Build the project and the sandbox (if used locally)"
 	@echo "  make test             - Run the test suite"
 	@echo "  make lint             - Lint the code"
 	@echo "  make format           - Format the code"
 	@echo "  make preflight        - Run formatting, linting, and tests"
 	@echo "  make clean            - Remove generated files"
-	@echo "  make start            - Start the Gemini CLI"
-	@echo "  make debug            - Start the Gemini CLI in debug mode"
-	@echo "  make release          - Publish a new release"
-	@echo "  make run-npx          - Run the CLI using npx (for testing the published package)"
-	@echo "  make create-alias     - Create a 'gemini' alias for your shell"
+	@echo "  make start            - Start the Max Headroom CLI"
+	@echo "  make debug            - Start the Max Headroom CLI in debug mode"
+	@echo "  make release          - Publish a new release (to internal registry)"
+	@echo "  make run-npx          - Run the CLI using npx (e.g., from GitHub for testing)"
+	@echo "  make create-alias     - Create a 'max-headroom' alias for your shell"
 
 install:
 	npm install
@@ -58,7 +58,7 @@ release:
 	npm run publish:release
 
 run-npx:
-	npx https://github.com/google-gemini/gemini-cli
+	npx YOUR_GITHUB_USERNAME/max-headroom-cli # TODO: Replace YOUR_GITHUB_USERNAME
 
 create-alias:
 	scripts/create_alias.sh
