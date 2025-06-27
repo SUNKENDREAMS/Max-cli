@@ -1,6 +1,6 @@
 # Max Headroom CLI
 
-[![Max Headroom CLI CI](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml) <!-- TODO: Update CI badge URL if repo/workflow name changes -->
+ <!-- TODO: Update CI badge URL if repo/workflow name changes -->
 
 ![Max Headroom Screenshot](./docs/assets/max-screenshot.png)
 
@@ -13,9 +13,8 @@ With the Max Headroom CLI you can:
 - Generate new apps from PDFs or sketches, using multimodal capabilities if supported by your chosen model.
 - Automate operational tasks.
 - Use tools and MCP servers to connect new capabilities.
-- (If configured with Google Gemini) Ground your queries with Google Search. This tool will be disabled by default for APEN.
 
-## Quickstart (for APEN environment)
+## Quickstart (for Closed environment)
 
 1. **Prerequisites:**
     - Ensure you have [Node.js version 18](https://nodejs.org/en/download) or higher installed.
@@ -36,26 +35,6 @@ With the Max Headroom CLI you can:
 5. **Authenticate:** When prompted, select "Ollama (Local)" and ensure your `OLLAMA_ENDPOINT` (and optionally `OLLAMA_MODEL`) environment variables are set correctly (e.g., in `~/.max_headroom/.env` or project `.max_headroom/.env`).
 
 You are now ready to use the Max Headroom CLI with your local models!
-
-### Optional: Using Google Gemini API (if APEN environment permits and is configured)
-
-If your APEN environment has access to Google Cloud and you wish to use Gemini models:
-1. Generate an API key from [Google AI Studio](https://aistudio.google.com/apikey).
-2. Set it as an environment variable:
-   ```bash
-   export GEMINI_API_KEY="YOUR_API_KEY"
-   ```
-3. Select "Gemini API Key" during `/auth` setup in Max Headroom.
-For other Google authentication methods, see the [authentication](./docs/cli/authentication.md) guide.
-
-1. Generate a key from [Google AI Studio](https://aistudio.google.com/apikey).
-2. Set it as an environment variable in your terminal. Replace `YOUR_API_KEY` with your generated key.
-
-   ```bash
-   export GEMINI_API_KEY="YOUR_API_KEY"
-   ```
-
-For other authentication methods, including Google Workspace accounts, see the [authentication](./docs/cli/authentication.md) guide.
 
 ## Examples
 
